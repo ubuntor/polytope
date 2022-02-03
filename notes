@@ -1,0 +1,21 @@
+nelder-mead
+
+consider combining functions
+f:R^2 -> R, g:R^2 -> R
+as h(x,y,z,w) = f(x,y) + g(z,w)
+to get more dimensions
+
+subdivide simplex and transform?
+ooh http://www.immagery.com/pdf/cage_based_def_methods.pdf
+
+orchestral samples?
+
+while True:
+    sort vertices by value
+    reflect/expand/contract worst vertex
+    shrink if no candidate vertex found
+
+[reflect] [expand] [contract/shrink?]
+hmm https://www.webpages.uidaho.edu/~fuchang/res/ANMS.pdf
+
+assign barycentric coordinates, then use as transform!

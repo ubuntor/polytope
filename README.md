@@ -1,2 +1,2 @@
-# polytope
+# Polytope
 uhh
