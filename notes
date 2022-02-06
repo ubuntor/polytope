@@ -6,6 +6,7 @@ as h(x,y,z,w) = f(x,y) + g(z,w)
 to get more dimensions
 
 subdivide simplex and transform?
+    loop subdivision???
 ooh http://www.immagery.com/pdf/cage_based_def_methods.pdf
 
 orchestral samples?
@@ -19,3 +20,4 @@ while True:
 hmm https://www.webpages.uidaho.edu/~fuchang/res/ANMS.pdf
 
 assign barycentric coordinates, then use as transform!
+    might need to precalculate
