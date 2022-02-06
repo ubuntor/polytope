@@ -1,5 +1,6 @@
 import math
 import random
+import itertools
 
 def f(a):
     x,y,z,w = a
@@ -114,10 +115,7 @@ while True:
                     s.append((fx,x))
                 simplex = sorted(s)
 
-    last = l[0]
-    l.append(-1)
-    for i in l[1:]:
-        if last != i:
-            print(["R..",".E.","..C"][i])
-            last = i
+    for x, group in itertools.groupby(l):
+        for i in range(math.floor(math.log(len(list(group)), 3))+1):
+            print(["R..",".E.","..C"][x])
     break
