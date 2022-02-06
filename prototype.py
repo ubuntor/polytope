@@ -7,10 +7,17 @@ def f(a):
     # McCormick + Styblinski-Tang: (-0.547, -1.547, -2.904, -2.904)
     return ((math.sin(x+y) + (x-y)**2 - 1.5*x + 2.5*y + 1) + ((z**4 - 16*z**2 + 5*z + w**4 - 16*w**2 + 5*w)/2))
 
+def vec_add(a,b):
+    return tuple(x+y for x,y in zip(a,b))
+def vec_sub(a,b):
+    return tuple(x-y for x,y in zip(a,b))
+def scal_mul(n,a):
+    return tuple(n*x for x in a)
+
 N = 4
 
 while True:
-    x0 = [-0.5, -0.5, -0.5, -0.5]
+    x0 = [-0.5, -1, -2, -2]
 
     for i in range(N):
         x0[i] += 0.01*(random.random()*2-1)
@@ -28,14 +35,8 @@ while True:
     simplex = sorted(simplex)
     print(simplex)
 
-    def vec_add(a,b):
-        return tuple(x+y for x,y in zip(a,b))
-    def vec_sub(a,b):
-        return tuple(x-y for x,y in zip(a,b))
-    def scal_mul(n,a):
-        return tuple(n*x for x in a)
 
-    ADAPTIVE = False
+    ADAPTIVE = True
     if ADAPTIVE:
         ALPHA = 1
         BETA = 1+2/N
@@ -51,7 +52,7 @@ while True:
 
     l = []
 
-    while num_moves < 50 or abs(simplex[0][0] - simplex[-1][0]) > 0.000001:
+    while num_moves < 50 or abs(simplex[0][0] - simplex[-1][0]) > 0.00001:
         num_moves += 1
         xc = tuple(sum(x[1][i] for x in simplex[:N])/N for i in range(N))
         f1, x1 = simplex[0]
@@ -114,8 +115,16 @@ while True:
                     fx = f(x)
                     s.append((fx,x))
                 simplex = sorted(s)
+    print(simplex[0])
 
+    grouped = []
     for x, group in itertools.groupby(l):
         for i in range(math.floor(math.log(len(list(group)), 3))+1):
             print(["R..",".E.","..C"][x])
+            grouped.append(x)
+
+    counts = [round(len([j for j in grouped if j == i])/len(grouped),2) for i in range(3)]
+
+    print(len(grouped), counts, round(max(counts)-min(counts),2))
+
     break
