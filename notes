@@ -7,6 +7,7 @@ to get more dimensions
 
 subdivide simplex and transform?
     loop subdivision???
+or just convex hull of projection then subdivide (or convex hull of subdivisions of tetrahedra)
 ooh http://www.immagery.com/pdf/cage_based_def_methods.pdf
 
 orchestral samples?
@@ -16,17 +17,72 @@ while True:
     reflect/expand/contract worst vertex
     shrink if no candidate vertex found
 
-[reflect] [expand] [contract/shrink?]
+[expand] [reflect] [contract/shrink]
 hmm https://www.webpages.uidaho.edu/~fuchang/res/ANMS.pdf
 
 assign barycentric coordinates, then use as transform!
     might need to precalculate
 
-
 Himmelblau
 Cross-in-tray
-Eggholder
-Hölder table
 McCormick
 Schaffer N. 4
 Styblinski-Tang
+
+Expand.
+Reflect.
+Contract.
+Find convergence.
+
+\alpha \coloneqq 1\\
+\beta \coloneqq 1 + \frac{2}{n}\\
+\gamma \coloneqq 0.75 - \frac{1}{2n}\\
+\delta \coloneqq 1 - \frac{1}{n}\\
+f(x_1) \le \dotsb \le f(x_{n+1})\\
+\overline{x} \coloneqq \frac{1}{n} \sum_{i=1}^n x_i\\
+
+x_r = xbar + alpha*(xbar - x_{n+1})
+if f(x_1) <= f(x_r) < f(x_n):
+    replace x_{n+1} with x_r [REFLECT]
+else if f(x_r) < f(x_1):
+    x_e = xbar + beta*(x_r - xbar)
+    if f(x_e) < f(x_r):
+        replace x_{n+1} with x_e [EXPAND]
+    else:
+        replace x_{n+1} with x_r [REFLECT]
+else if f(x_n) <= f(x_r) < f(x_{n+1}):
+    x_oc = xbar + gamma*(x_r - xbar)
+    if f(x_oc) <= f(x_r):
+        replace x_{n+1} with x_oc [CONTRACT (OUTSIDE)]
+    else:
+        for 2 <= i <= n+1:
+            replace x_i with x_1 + delta*(x_i - x_1) [SHRINK]
+else:
+    x_ic = xbar - gamma*(x_r - xbar)
+    if f(x_ic) < f(x_r):
+        replace x_{n+1} with x_ic [CONTRACT (INSIDE)]
+    else:
+        for 2 <= i <= n+1:
+            replace x_i with x_1 + delta*(x_i - x_1) [SHRINK]
+
+The Nelder–Mead method (also downhill simplex method, amoeba method, or polytope method) is a commonly applied numerical method used to find the minimum or maximum of an objective function in a multidimensional space. It is a direct search method (based on function comparison) and is often applied to nonlinear optimization problems for which derivatives may not be known. However, the Nelder–Mead technique is a heuristic search method that can converge to non-stationary points on problems that can be solved by alternative methods.
+
+The Nelder–Mead technique was proposed by John Nelder and Roger Mead in 1965, as a development of the method of Spendley et al.
+
+The method uses the concept of a simplex, which is a special polytope of n+1 vertices in n dimensions. Examples of simplices include a line segment on a line, a triangle on a plane, a tetrahedron in three-dimensional space and so forth.
+
+The method approximates a local optimum of a problem with n variables when the objective function varies smoothly and is unimodal. Typical implementations minimize functions, and we maximize f(x) by minimizing -f(x).
+
+For example, a suspension bridge engineer has to choose how thick each strut, cable, and pier must be. These elements are interdependent, but it is not easy to visualize the impact of changing any specific element. Simulation of such complicated structures is often extremely computationally expensive to run, possibly taking upwards of hours per execution. The Nelder–Mead method requires, in the original variant, no more than two evaluations per iteration, except for the shrink operation described later, which is attractive compared to some other direct-search optimization methods. However, the overall number of iterations to proposed optimum may be high.
+
+Nelder–Mead in n dimensions maintains a set of n+1 test points arranged as a simplex. It then extrapolates the behavior of the objective function measured at each test point in order to find a new test point and to replace one of the old test points with the new one, and so the technique progresses. The simplest approach is to replace the worst point with a point reflected through the centroid of the remaining n points. If this point is better than the best current point, then we can try stretching exponentially out along this line. On the other hand, if this new point isn't much better than the previous value, then we are stepping across a valley, so we shrink the simplex towards a better point. An intuitive explanation of the algorithm from "Numerical Recipes":
+
+The downhill simplex method now takes a series of steps, most steps just moving the point of the simplex where the function is largest (“highest point”) through the opposite face of the simplex to a lower point. These steps are called reflections, and they are constructed to conserve the volume of the simplex (and hence maintain its nondegeneracy). When it can do so, the method expands the simplex in one or another direction to take larger steps. When it reaches a “valley floor”, the method contracts itself in the transverse direction and tries to ooze down the valley. If there is a situation where the simplex is trying to “pass through the eye of a needle”, it contracts itself in all directions, pulling itself in around its lowest (best) point.
+
+Unlike modern optimization methods, the Nelder–Mead heuristic can converge to a non-stationary point, unless the problem satisfies stronger conditions than are necessary for modern methods. Modern improvements over the Nelder–Mead heuristic have been known since 1979.
+
+Many variations exist depending on the actual nature of the problem being solved. A common variant uses a constant-size, small simplex that roughly follows the gradient direction (which gives steepest descent). Visualize a small triangle on an elevation map flip-flopping its way down a valley to a local bottom. This method is also known as the flexible polyhedron method. This, however, tends to perform poorly against the method described in this article because it makes small, unnecessary steps in areas of little interest.
+
+credits:
+Wikipedia article on Nelder-Mead: https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method
+(any pixel fonts?)
