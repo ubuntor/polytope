@@ -23,6 +23,13 @@ hmm https://www.webpages.uidaho.edu/~fuchang/res/ANMS.pdf
 assign barycentric coordinates, then use as transform!
     might need to precalculate
 
+ddr-esque animation on hit (white glow, expand)
+"judgement markers":
+    (bad) +[points]...
+    (normal) +[points]
+    (almost perfect) +[points]!
+    (perfect) +[points]! in rainbow
+
 Himmelblau
 Cross-in-tray
 McCormick
@@ -86,3 +93,12 @@ Many variations exist depending on the actual nature of the problem being solved
 credits:
 Wikipedia article on Nelder-Mead: https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method
 (any pixel fonts?)
+
+things needed:
+    play sound samples
+    fade in and loop sound samples
+    draw text
+    draw lines with glow?
+    draw images
+    canvas scaling (image-rendering: pixelated)
+    text/image particles

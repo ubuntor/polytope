@@ -4,6 +4,8 @@ const BETA = 1+2/N;
 const GAMMA = 0.75 - 1/(2*N);
 const DELTA = 1 - 1/N;
 const NUM_MOVES = 75;
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
 
 function f(a) {
     let [x,y,z,w] = a;
@@ -143,20 +145,29 @@ function get_moves(f, x0_init) {
     return [best_x0, best_moves];
 }
 
-const canvas = document.getElementById('canvas');
-
 function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;    
+    canvas.width = 800; //window.innerWidth;
+    canvas.height = 600; //window.innerHeight;    
+}
+
+function render() {
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+    ctx.rect(30, 50, 8, 500);
+    ctx.rect(50, 50, 700, 500);
+    ctx.strokeStyle = '#f23af2';
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 2;
+    ctx.stroke();
+    window.requestAnimationFrame(render);
 }
 
 function main() {
     let [x0, moves] = get_moves(f, [-0.5,-1,-2,-2]);
     console.log(x0, moves);
     resize();
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    window.requestAnimationFrame(render);
 }
 
 main();
