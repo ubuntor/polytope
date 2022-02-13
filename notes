@@ -90,9 +90,13 @@ Unlike modern optimization methods, the Nelder–Mead heuristic can converge to 
 
 Many variations exist depending on the actual nature of the problem being solved. A common variant uses a constant-size, small simplex that roughly follows the gradient direction (which gives steepest descent). Visualize a small triangle on an elevation map flip-flopping its way down a valley to a local bottom. This method is also known as the flexible polyhedron method. This, however, tends to perform poorly against the method described in this article because it makes small, unnecessary steps in areas of little interest.
 
+
+make intensity decay over time
+
 credits:
 Wikipedia article on Nelder-Mead: https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method
 https://heraldod.itch.io/bitmap-fonts
+https://tinyworlds.itch.io/free-pixel-font-thaleah
 
 things needed:
     play sound samples
