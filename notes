@@ -93,10 +93,18 @@ Many variations exist depending on the actual nature of the problem being solved
 
 make intensity decay over time
 
+no more expand after a while...
+maybe define f(x,t) = f(x) + epsilon_t [explore an ever-changing landscape]
+epsilon_t is random noise dependent on t
+at max intensity, freeze t and make each freestyle move 20x as powerful for rapid convergence?
+
+make wikipedia scroll speed proportional to intensity
+
 credits:
 Wikipedia article on Nelder-Mead: https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method
 https://heraldod.itch.io/bitmap-fonts
 https://tinyworlds.itch.io/free-pixel-font-thaleah
+https://managore.itch.io/m3x6
 
 things needed:
     play sound samples
