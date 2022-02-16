@@ -5,14 +5,30 @@ const ALPHA = 1;
 const BETA = 1 + 2 / N;
 const GAMMA = 0.75 - 1 / (2 * N);
 const DELTA = 1 - 1 / N;
-const VISIBLE_MOVES = 10;
-const NUM_RANDOM = 1000;
+const VISIBLE_MOVES = 8;
 let W = WIDTH_ORIG * devicePixelRatio;
 let H = HEIGHT_ORIG * devicePixelRatio;
-let RAND = [];
+const TRIALS = 100;
+const WIKIPEDIA = `The Nelder-Mead method (also downhill simplex method, amoeba method, or polytope method) is a commonly applied numerical method used to find the minimum or maximum of an objective function in a multidimensional space. It is a direct search method (based on function comparison) and is often applied to nonlinear optimization problems for which derivatives may not be known. However, the Nelder-Mead technique is a heuristic search method that can converge to non-stationary points on problems that can be solved by alternative methods.
+
+The Nelder-Mead technique was proposed by John Nelder and Roger Mead in 1965, as a development of the method of Spendley et al.
+
+The method uses the concept of a simplex, which is a special polytope of n+1 vertices in n dimensions. Examples of simplices include a line segment on a line, a triangle on a plane, a tetrahedron in three-dimensional space and so forth.
+
+The method approximates a local optimum of a problem with n variables when the objective function varies smoothly and is unimodal. Typical implementations minimize functions, and we maximize f(x) by minimizing -f(x).
+
+For example, a suspension bridge engineer has to choose how thick each strut, cable, and pier must be. These elements are interdependent, but it is not easy to visualize the impact of changing any specific element. Simulation of such complicated structures is often extremely computationally expensive to run, possibly taking upwards of hours per execution. The Nelder-Mead method requires, in the original variant, no more than two evaluations per iteration, except for the shrink operation described later, which is attractive compared to some other direct-search optimization methods. However, the overall number of iterations to proposed optimum may be high.
+
+Nelder-Mead in n dimensions maintains a set of n+1 test points arranged as a simplex. It then extrapolates the behavior of the objective function measured at each test point in order to find a new test point and to replace one of the old test points with the new one, and so the technique progresses. The simplest approach is to replace the worst point with a point reflected through the centroid of the remaining n points. If this point is better than the best current point, then we can try stretching exponentially out along this line. On the other hand, if this new point isn't much better than the previous value, then we are stepping across a valley, so we shrink the simplex towards a better point. An intuitive explanation of the algorithm from "Numerical Recipes":
+
+The downhill simplex method now takes a series of steps, most steps just moving the point of the simplex where the function is largest ("highest point") through the opposite face of the simplex to a lower point. These steps are called reflections, and they are constructed to conserve the volume of the simplex (and hence maintain its nondegeneracy). When it can do so, the method expands the simplex in one or another direction to take larger steps. When it reaches a "valley floor", the method contracts itself in the transverse direction and tries to ooze down the valley. If there is a situation where the simplex is trying to "pass through the eye of a needle", it contracts itself in all directions, pulling itself in around its lowest (best) point.
+
+Unlike modern optimization methods, the Nelder-Mead heuristic can converge to a non-stationary point, unless the problem satisfies stronger conditions than are necessary for modern methods. Modern improvements over the Nelder-Mead heuristic have been known since 1979.
+
+Many variations exist depending on the actual nature of the problem being solved. A common variant uses a constant-size, small simplex that roughly follows the gradient direction (which gives steepest descent). Visualize a small triangle on an elevation map flip-flopping its way down a valley to a local bottom. This method is also known as the flexible polyhedron method. This, however, tends to perform poorly against the method described in this article because it makes small, unnecessary steps in areas of little interest.`
 
 function balanced_ternary(x, precision) {
-    var x = floor(x * pow(3, precision));
+    var x = Math.floor(x * Math.pow(3, precision));
     let digits = [];
     while (x > 0) {
         let digit = [0, 1, -1][x % 3];
@@ -20,13 +36,17 @@ function balanced_ternary(x, precision) {
         x -= digit;
         x /= 3;
     }
+    if (digits.length == 0) {
+        return [0];
+    }
+    digits.reverse();
     return digits;
 }
 
-function f(a, t, id) {
+function f(a) {
     let [x, y, z, w] = a;
     // McCormick + Styblinski-Tang: (-0.547, -1.547, -2.904, -2.904)
-    return (0.0001 * RAND[(t * (2 * N + 5) + id) % RAND.length]) + (Math.sin(x + y) + (x - y) ** 2 - 1.5 * x + 2.5 * y + 1) + ((z ** 4 - 16 * z ** 2 + 5 * z + w ** 4 - 16 * w ** 2 + 5 * w) / 2);
+    return (0.0001 * (Math.random() * 2 - 1)) + (Math.sin(x + y) + (x - y) ** 2 - 1.5 * x + 2.5 * y + 1) + ((z ** 4 - 16 * z ** 2 + 5 * z + w ** 4 - 16 * w ** 2 + 5 * w) / 2);
 }
 
 function vec_add(a, b) {
@@ -40,10 +60,9 @@ function scal_mul(v, a) {
 }
 
 function simplex_replace(simplex, v) {
-    let id = simplex.pop()[2];
-    v.push(id);
-    simplex.push(v);
-    simplex.sort((a, b) => a[0] - b[0]);
+    let xn1 = [...simplex[simplex.length - 1]];
+    xn1[0] = v;
+    simplex[simplex.length - 1] = xn1;
 }
 
 function make_simplex(x0) {
@@ -53,155 +72,168 @@ function make_simplex(x0) {
         x[i] *= 1.05;
         simplex.push(x);
     }
-    simplex = simplex.map((e, i) => [f(e, 0, i), e, i]);
-    simplex.sort((a, b) => a[0] - b[0]);
+    simplex = simplex.map((e, i) => [e, i]);
     return simplex;
 }
 
-function next_move(f, t, simplex_orig) {
-    let cur_streak = 0;
-    let cur_move = -1;
-    let simplex = JSON.parse(JSON.stringify(simplex_orig)); // lmao deep copy
-    for (let i = 0; i < 81; i++) {
-        t++;
-        simplex = simplex.map(([_, e, id]) => [f(e, t, id), e, id]);
-        simplex.sort((a, b) => a[0] - b[0]);
-
-        let xc = Array(N).fill(0);
-        for (let i = 0; i < N; i++) {
-            xc = vec_add(xc, simplex[i][1]);
-        }
-        xc = scal_mul(1 / N, xc);
-        let [f1, x1] = simplex[0];
-        let [fn, xn] = simplex[N - 1];
-        let [fn1, xn1] = simplex[N];
-        let xr = vec_add(xc, scal_mul(ALPHA, vec_sub(xc, xn1)));
-        let fr = f(xr, t, N + 1);
-        if (f1 <= fr && fr < fn) {
-            //console.log(".R. reflect");
-            if (cur_move == -1) {
-                cur_move = 1;
-            } else if (cur_move != 1) {
-                break;
-            }
-            simplex_replace(simplex, [fr, xr]);
-        } else if (fr < f1) {
-            let xe = vec_add(xc, scal_mul(BETA, vec_sub(xr, xc)));
-            let fe = f(xe, t, N + 2);
-            if (fe < fr) {
-                //console.log("E.. expand");
-                if (cur_move == -1) {
-                    cur_move = 0;
-                } else if (cur_move != 0) {
-                    break;
-                }
-                simplex_replace(simplex, [fe, xe]);
-            } else {
-                //console.log(".R. reflect (failed expand)");
-                if (cur_move == -1) {
-                    cur_move = 1;
-                } else if (cur_move != 1) {
-                    break;
-                }
-                simplex_replace(simplex, [fr, xr]);
-            }
-        } else if (fn <= fr && fr < fn1) {
-            let xoc = vec_add(xc, scal_mul(GAMMA, vec_sub(xr, xc)));
-            let foc = f(xoc, t, N + 3);
-            if (foc <= fr) {
-                //console.log("..C contract (outside)");
-                if (cur_move == -1) {
-                    cur_move = 2;
-                } else if (cur_move != 2) {
-                    break;
-                }
-                simplex_replace(simplex, [foc, xoc]);
-            } else {
-                //console.log("..C shrink (failed outside contract)");
-                if (cur_move == -1) {
-                    cur_move = 3;
-                } else if (cur_move != 3) {
-                    break;
-                }
-                for (let i = 1; i < N + 1; i++) {
-                    let x = vec_add(x1, scal_mul(DELTA, vec_sub(simplex[i][1], x1)));
-                    let fx = f(x, t, N + 4 + i);
-                    simplex[i] = [fx, x, simplex[i][2]];
-                }
-                simplex.sort((a, b) => a[0] - b[0]);
-            }
-        } else { // fr >= fn1
-            xic = vec_sub(xc, scal_mul(GAMMA, vec_sub(xr, xc)))
-            fic = f(xic, t, N + 4)
-            if (fic < fn1) {
-                //console.log("..C contract (inside)")
-                if (cur_move == -1) {
-                    cur_move = 2;
-                } else if (cur_move != 2) {
-                    break;
-                }
-                simplex_replace(simplex, [fic, xic]);
-            } else {
-                //console.log("..C shrink (failed inside contract)");
-                if (cur_move == -1) {
-                    cur_move = 3;
-                } else if (cur_move != 3) {
-                    break;
-                }
-                for (let i = 1; i < N + 1; i++) {
-                    let x = vec_add(x1, scal_mul(DELTA, vec_sub(simplex[i][1], x1)));
-                    let fx = f(x, t, N + 4 + i);
-                    simplex[i] = [fx, x, simplex[i][2]];
-                }
-                simplex.sort((a, b) => a[0] - b[0]);
-            }
-        }
-        cur_streak++;
+function next_state(f, simplex_orig) {
+    let move;
+    let simplex = [...simplex_orig];
+    let f_simplex = Array(N + 1);
+    for (let i = 0; i < N + 1; i++) {
+        f_simplex[simplex[i][1]] = f(simplex[i][0])
     }
-    return [[cur_streak, cur_move], simplex, t - 1];
+    simplex.sort((a, b) => f_simplex[a[1]] - f_simplex[b[1]]);
+    let xc = Array(N).fill(0);
+    for (let i = 0; i < N; i++) {
+        xc = vec_add(xc, simplex[i][0]);
+    }
+    xc = scal_mul(1 / N, xc);
+    let [x1, id1] = simplex[0];
+    let f1 = f_simplex[id1];
+    let [xn, idn] = simplex[N - 1];
+    let fn = f_simplex[idn];
+    let [xn1, idn1] = simplex[N];
+    let fn1 = f_simplex[idn1];
+    let xr = vec_add(xc, scal_mul(ALPHA, vec_sub(xc, xn1)));
+    let fr = f(xr);
+    let xe = vec_add(xc, scal_mul(BETA, vec_sub(xr, xc)));
+    let fe = f(xe);
+    let xoc = vec_add(xc, scal_mul(GAMMA, vec_sub(xr, xc)));
+    let foc = f(xoc);
+    let xic = vec_sub(xc, scal_mul(GAMMA, vec_sub(xr, xc)))
+    let fic = f(xic)
+    if (f1 <= fr && fr < fn) {
+        //console.log(".R.. reflect");
+        move = 1;
+        simplex_replace(simplex, xr);
+    } else if (fr < f1) {
+        if (fe < fr) {
+            //console.log("E... expand");
+            move = 0;
+            simplex_replace(simplex, xe);
+        } else {
+            //console.log(".R.. reflect (failed expand)");
+            move = 1;
+            simplex_replace(simplex, xr);
+        }
+    } else if (fn <= fr && fr < fn1) {
+        if (foc <= fr) {
+            //console.log("..C. contract (outside)");
+            move = 2;
+            simplex_replace(simplex, xoc);
+        } else {
+            //console.log("...S shrink (failed outside contract)");
+            move = 3;
+            for (let i = 1; i < N + 1; i++) {
+                let x = vec_add(x1, scal_mul(DELTA, vec_sub(simplex[i][0], x1)));
+                simplex[i] = [x, simplex[i][1]];
+            }
+        }
+    } else { // fr >= fn1
+        if (fic < fn1) {
+            //console.log("..C. contract (inside)")
+            move = 2;
+            simplex_replace(simplex, xic);
+        } else {
+            //console.log("...S shrink (failed inside contract)");
+            move = 3;
+            for (let i = 1; i < N + 1; i++) {
+                let x = vec_add(x1, scal_mul(DELTA, vec_sub(simplex[i][0], x1)));
+                simplex[i] = [x, simplex[i][1]];
+            }
+        }
+    }
+    let state = {
+        simplex: simplex_orig,
+        move,
+        f_simplex,
+        fr,
+        fe,
+        foc,
+        fic
+    }
+
+    return [state, simplex];
 }
+
+function* next_states(f, simplex) {
+    let state;
+    [state, simplex] = next_state(f, simplex);
+    let states = [state];
+    let total_mult = 1;
+    while (true) {
+        [state, simplex] = next_state(f, simplex);
+        if (state.move != states[0].move || total_mult >= 81) {
+            let num_split = Math.floor(Math.log(total_mult) / Math.log(3)) + 1;
+            // deemphasize reflect
+            if (states[0].move == 1 && num_split > 1) {
+                num_split--;
+            }
+            let mults = [];
+            for (let i = 0; i < num_split - 1; i++) {
+                let mult = Math.floor(total_mult / 3);
+                mults.push(mult);
+                total_mult -= mult;
+            }
+            mults.push(total_mult);
+            mults.sort();
+            let cur_index = 0;
+            let moves = [];
+            for (let i = 0; i < num_split; i++) {
+                states[cur_index].mult = mults[i];
+                moves.push(states[cur_index]);
+                cur_index += mults[i];
+            }
+            yield moves;
+            states = [];
+            total_mult = 0;
+        }
+        states.push(state);
+        total_mult++;
+    }
+}
+
+/*
+state : {
+    simplex (before move)
+    move
+    mult
+    f_simplex
+    fr
+    fe
+    foc
+    fic
+}
+*/
 
 function init_moves(f, x0_init) {
     let best_score = 1;
     let best_moves = [];
 
-    for (let trial = 0; trial < 100; trial++) {
+    for (let trial = 0; trial < TRIALS; trial++) {
         let x0 = x0_init.map((e) => e + 0.01 * (Math.random() * 2 - 1));
-        let orig_simplex = make_simplex(x0);
-        let simplex = orig_simplex;
-        let t = 0;
+        let simplex = make_simplex(x0);
         let moves = [];
+        let gen = next_states(f, simplex);
         while (moves.length < 500) {
-            let total_mult, move;
-            // TODO: WRONG need in-between simplex
-            [[total_mult, move], simplex, t] = next_move(f, t, simplex);
-            //console.log(total_mult, move, t, simplex);
-            let num_split = Math.floor(Math.log(total_mult) / Math.log(3)) + 1;
-            // deemphasize reflect
-            if (move == 1 && num_split > 1) {
-                num_split--;
-            }
-            for (let i = 0; i < num_split - 1; i++) {
-                let mult = Math.floor(total_mult / (num_split - i)); // TODO: add jitter
-                moves.push([mult, move, simplex]);
-                total_mult -= mult;
-            }
-            moves.push([total_mult, move, simplex]);
+            moves = moves.concat(gen.next().value);
         }
         let counts = [0, 0, 0, 0];
         for (let i = 0; i < moves.length; i++) {
-            counts[moves[i][1]]++;
+            counts[moves[i].move]++;
         }
         //let score = (Math.max(...counts) - Math.min(...counts)) / moves.length;
-        let score = (counts[1] - counts[0] - counts[3]) / moves.length; // REFLECT - EXPAND - SHRINK
+        let score = (counts[1] - (counts[0] + counts[3])) / moves.length; // REFLECT - (EXPAND+SHRINK)
         if (score < best_score) {
             console.log(trial, score, counts);
             best_score = score;
             best_moves = moves;
+            best_gen = gen;
         }
     }
     console.log(best_moves);
-    return best_moves;
+    return [best_moves, best_gen];
 }
 
 class Play extends Phaser.Scene {
@@ -210,26 +242,24 @@ class Play extends Phaser.Scene {
     }
 
     process_move(x) {
-        if (x == this.moves[0][1]) {
+        if (x == this.moves[0].move) {
             console.log('good');
             this.moves.shift();
+            if (this.moves.length < VISIBLE_MOVES) {
+                this.moves = this.moves.concat(this.gen.next().value);
+            }
         } else {
             console.log('bad');
         }
     }
 
     create() {
-        RAND = Array.from({ length: NUM_RANDOM }, _ => Math.random() * 2 - 1);
         this.cameras.main.setBackgroundColor("#111111");
         this.graphics = this.add.graphics();
         this.add.rectangle(50 - 0.5, 100 - 0.5, 320, H - 200).setStrokeStyle(1, 0xf23af2).setOrigin(0);
-        this.add.rectangle(50 - 0.5, 5 - 0.5, 320, 100 - 5).setStrokeStyle(1, 0xf23af2).setOrigin(0);
         this.add.line(0, 0, 50 + 80 - 0.5, 100 - 0.5, 50 + 80 - 0.5, H - 100 - 0.5).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0, 0);
         this.add.line(0, 0, 50 + 2 * 80 - 0.5, 100 - 0.5, 50 + 2 * 80 - 0.5, H - 100 - 0.5).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0, 0);
         this.add.line(0, 0, 50 + 3 * 80 - 0.5, 100 - 0.5, 50 + 3 * 80 - 0.5, H - 100 - 0.5).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0, 0);
-
-
-        //this.add.rectangle(150 - 0.5, 100 - 0.5, 100, H - 200).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0);
         this.add.text(15, H - 100, 'INTENSITY', { font: '12pt Covenant', fill: '#f23af2' }).setAngle(-90);
         this.add.rectangle(35 - 0.5, 100 - 0.5, 8, H - 200).setStrokeStyle(1, 0xf23af2).setOrigin(0);
         this.add.rectangle(377 - 0.5, 600 - 0.5, 8, H - 700).setStrokeStyle(1, 0xf23af2).setOrigin(0);
@@ -272,6 +302,18 @@ class Play extends Phaser.Scene {
 
         this.receptors = [expand_receptor, reflect_receptor, contract_receptor, shrink_receptor];
 
+        this.add.rectangle(50 - 0.5, 5 - 0.5, 320, 100 - 5).setStrokeStyle(1, 0xf23af2).setOrigin(0);
+        let mask_shape = this.make.graphics();
+        mask_shape.fillStyle(0xffffff);
+        mask_shape.beginPath();
+        mask_shape.fillRect(50 - 0.5 + 1, 5 - 0.5 + 1, 320 - 2, 100 - 5 - 2);
+        let mask = mask_shape.createGeometryMask();
+        this.wikipedia = this.make.text({
+            x: 55, y: -5, text: WIKIPEDIA, style: { font: '24pt m3x6', fill: 'white', lineSpacing: -15, wordWrap: { width: 320 } }
+        })
+        this.wikipedia_y = 0;
+        this.wikipedia.setMask(mask);
+        console.log(this.wikipedia)
         /*for (let receptor of this.receptors) {
             receptor.setScale(0.9);
             this.tweens.add({
@@ -292,7 +334,7 @@ class Play extends Phaser.Scene {
         });*/
 
         this.tmp = this.add.text(500, 500, 'test');
-        this.moves = init_moves(f, [-0.5, -1, -2, -2]);
+        [this.moves, this.gen] = init_moves(f, [-0.5, -1, -2, -2]);
         let keycodes = [Phaser.Input.Keyboard.KeyCodes.Z, Phaser.Input.Keyboard.KeyCodes.X, Phaser.Input.Keyboard.KeyCodes.C, Phaser.Input.Keyboard.KeyCodes.V];
         for (let i = 0; i < keycodes.length; i++) {
             this.input.keyboard.addKey(keycodes[i]).on('down', function (key, event) {
@@ -301,15 +343,39 @@ class Play extends Phaser.Scene {
         }
     }
 
-    update() {
+    update(time, delta) {
         this.graphics.clear();
+        //console.log(this.moves);
         let debug = [this.moves.length];
-        for (let i = 0; i < 10; i++) {
-            let x = this.moves[i][1];
-            debug.push(`${'ZXCV'[this.moves[i][1]]} ${this.moves[i][0]}`);
-            this.graphics.fillStyle([0xdd0000, 0x00dd00, 0x00dddd, 0x0000dd][x]);
-            this.graphics.fillRoundedRect(55 - 0.5 + 80 * x, H - 175 - 0.5 - i * 90, 70, 70, 10);
+        this.graphics.lineStyle(3, 0xdddd00);
+        for (let i = 0; i < VISIBLE_MOVES; i++) {
+            let m = this.moves[i].move;
+            debug.push(`${'ZXCV'[m]} ${this.moves[i].mult}`);
+            this.graphics.fillStyle([0xdd0000, 0x00dd00, 0x00dddd, 0x0000dd][m]);
+            let x = 90 + 80 * m - 0.5;
+            let y = H - 140 - i * 90 - 0.5;
+            this.graphics.fillRoundedRect(x - 35, y - 35, 70, 70, 10);
+            if (this.moves[i].mult > 1) {
+                this.graphics.lineBetween(x - 30, y, x + 30, y);
+                let digits = balanced_ternary(this.moves[i].mult, 0);
+                let start = -7.5 * (digits.length - 1);
+                for (let j = 0; j < digits.length; j++) {
+                    switch (digits[j]) {
+                        case -1:
+                            this.graphics.lineBetween(x + start + 15 * j, y, x + start + 15 * j, y + 20);
+                            break;
+                        case 0:
+                            this.graphics.strokeCircle(x + start + 15 * j, y, 5);
+                            break;
+                        case 1:
+                            this.graphics.lineBetween(x + start + 15 * j, y, x + start + 15 * j, y - 20);
+                            break;
+                    }
+                }
+            }
         }
+        this.wikipedia_y = (this.wikipedia_y - delta * 0.01) % (this.wikipedia.height + 100);
+        this.wikipedia.y = this.wikipedia_y - 5 + 95;
         this.tmp.setText(debug);
     }
 }
