@@ -101,6 +101,7 @@ function next_state(f, simplex_orig) {
         xc = vec_add(xc, simplex[i][0]);
     }
     xc = scal_mul(1 / N, xc);
+    let changed = Array(N + 1).fill(false);
     let [x1, id1] = simplex[0];
     let f1 = f_simplex[id1];
     let [xn, idn] = simplex[N - 1];
@@ -119,27 +120,32 @@ function next_state(f, simplex_orig) {
         //console.log(".R.. reflect");
         move = 1;
         simplex_replace(simplex, xr);
+        changed[idn1] = true;
     } else if (fr < f1) {
         if (fe < fr) {
             //console.log("E... expand");
             move = 0;
             simplex_replace(simplex, xe);
+            changed[idn1] = true;
         } else {
             //console.log(".R.. reflect (failed expand)");
             move = 1;
             simplex_replace(simplex, xr);
+            changed[idn1] = true;
         }
     } else if (fn <= fr && fr < fn1) {
         if (foc <= fr) {
             //console.log("..C. contract (outside)");
             move = 2;
             simplex_replace(simplex, xoc);
+            changed[idn1] = true;
         } else {
             //console.log("...S shrink (failed outside contract)");
             move = 3;
             for (let i = 1; i < N + 1; i++) {
                 let x = vec_add(x1, scal_mul(DELTA, vec_sub(simplex[i][0], x1)));
                 simplex[i] = [x, simplex[i][1]];
+                changed[simplex[i][1]] = true;
             }
         }
     } else { // fr >= fn1
@@ -147,12 +153,14 @@ function next_state(f, simplex_orig) {
             //console.log("..C. contract (inside)")
             move = 2;
             simplex_replace(simplex, xic);
+            changed[idn1] = true;
         } else {
             //console.log("...S shrink (failed inside contract)");
             move = 3;
             for (let i = 1; i < N + 1; i++) {
                 let x = vec_add(x1, scal_mul(DELTA, vec_sub(simplex[i][0], x1)));
                 simplex[i] = [x, simplex[i][1]];
+                changed[simplex[i][1]] = true;
             }
         }
     }
@@ -163,7 +171,8 @@ function next_state(f, simplex_orig) {
         fr,
         fe,
         foc,
-        fic
+        fic,
+        changed
     }
 
     return [state, simplex];
@@ -193,7 +202,13 @@ function* next_states(f, simplex) {
             let cur_index = 0;
             let moves = [];
             for (let i = 0; i < num_split; i++) {
+
+                let changed = Array(N + 1).fill(false);
+                for (let j = cur_index; j < cur_index + mults[i]; j++) {
+                    changed = changed.map((e, i) => e || states[j].changed[i]);
+                }
                 states[cur_index].mult = mults[i];
+                states[cur_index].changed = changed;
                 moves.push(states[cur_index]);
                 cur_index += mults[i];
             }
@@ -274,7 +289,12 @@ class Play extends Phaser.Scene {
         // TODO: freestyle
         if (x == this.moves[0].move) {
             console.log('good');
-            console.log(this.moves.shift());
+            for (let i = 0; i < N + 1; i++) {
+                if (this.moves[0].changed[i]) {
+                    this.three.vertex_mats[i].color.setHex(0xf23af2);
+                }
+            }
+            this.moves.shift();
             if (this.moves.length < VISIBLE_MOVES) {
                 this.moves = this.moves.concat(this.gen.next().value);
             }
@@ -417,13 +437,16 @@ class Play extends Phaser.Scene {
         this.three.camera.position.z = 5;
 
         this.three.vertices = [];
+        this.three.vertex_mats = [];
+        this.three.vertex_color = new THREE.Color(0x333333);
         this.three.vertex_group = new THREE.Group();
         this.three.scene.add(this.three.vertex_group);
         let sphere_geom = new THREE.SphereGeometry(0.05, 32, 16);
         for (let i = 0; i < N + 1; i++) {
-            let material = new THREE.MeshPhongMaterial({ color: 0x444444, shininess: 100 });
+            let material = new THREE.MeshPhongMaterial({ color: 0x333333, shininess: 100 });
             let vertex = new THREE.Mesh(sphere_geom, material);
             this.three.vertices.push(vertex);
+            this.three.vertex_mats.push(material);
             this.three.vertex_group.add(vertex);
         }
         this.three.camera_pos = new THREE.Vector3();
@@ -454,7 +477,8 @@ class Play extends Phaser.Scene {
         let tet_geom = gltf.scene.children[0].geometry;
         tet_geom.applyMatrix4(new THREE.Matrix4().makeScale(1, -1, -1));
 
-        let tet_material = new THREE.MeshNormalMaterial({ transparent: true, opacity: 0.2 });//new THREE.MeshPhongMaterial({ color: 0x0000ff });
+        let tet_material = new THREE.MeshNormalMaterial({ transparent: true, opacity: 0.5 });
+        //new THREE.MeshPhongMaterial({ color: 0x0000ff });
 
         for (let i = 0; i < N + 1; i++) {
             let tet = new THREE.Mesh(tet_geom, tet_material);
@@ -545,11 +569,10 @@ class Play extends Phaser.Scene {
                 this.three.lines[ind].lookAt(this.three.vertices[j].position);
             }
         }
-        /*for (let i = 0; i < N + 1; i++) {
+        for (let i = 0; i < N + 1; i++) {
             //this.three.vertices[i].scale.setScalar(this.three.bounding_sphere.radius);
-            this.three.tets[i].matrix.setPosition(this.three.vertices[i].position);
-
-        }*/
+            this.three.vertex_mats[i].color.lerp(this.three.vertex_color, 0.005 * delta);
+        }
         this.three.tets[0].matrix.makeBasis(this.three.line_vecs[1 * (N + 1) + 2], this.three.line_vecs[1 * (N + 1) + 3], this.three.line_vecs[1 * (N + 1) + 4]);
         this.three.tets[0].matrix.setPosition(this.three.vertices[1].position);
         this.three.tets[1].matrix.makeBasis(this.three.line_vecs[0 * (N + 1) + 2], this.three.line_vecs[0 * (N + 1) + 3], this.three.line_vecs[0 * (N + 1) + 4]);
