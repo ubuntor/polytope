@@ -1,13 +1,18 @@
-const WIDTH_ORIG = 960;
-const HEIGHT_ORIG = 720;
+import * as THREE from 'https://cdn.skypack.dev/three@0.137.5';
+import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/loaders/GLTFLoader.js';
+
 const N = 4;
 const ALPHA = 1;
 const BETA = 1 + 2 / N;
 const GAMMA = 0.75 - 1 / (2 * N);
 const DELTA = 1 - 1 / N;
 const VISIBLE_MOVES = 8;
-let W = WIDTH_ORIG * devicePixelRatio;
-let H = HEIGHT_ORIG * devicePixelRatio;
+const R = devicePixelRatio;
+const W = 960 * R;
+const H = 720 * R;
+const R2 = R / 1.25;
+const FS = Math.round(R); // font scale
+const F = (x) => Math.floor(x * R2);
 const TRIALS = 100;
 const WIKIPEDIA = `The Nelder-Mead method (also downhill simplex method, amoeba method, or polytope method) is a commonly applied numerical method used to find the minimum or maximum of an objective function in a multidimensional space. It is a direct search method (based on function comparison) and is often applied to nonlinear optimization problems for which derivatives may not be known. However, the Nelder-Mead technique is a heuristic search method that can converge to non-stationary points on problems that can be solved by alternative methods.
 
@@ -26,6 +31,9 @@ The downhill simplex method now takes a series of steps, most steps just moving 
 Unlike modern optimization methods, the Nelder-Mead heuristic can converge to a non-stationary point, unless the problem satisfies stronger conditions than are necessary for modern methods. Modern improvements over the Nelder-Mead heuristic have been known since 1979.
 
 Many variations exist depending on the actual nature of the problem being solved. A common variant uses a constant-size, small simplex that roughly follows the gradient direction (which gives steepest descent). Visualize a small triangle on an elevation map flip-flopping its way down a valley to a local bottom. This method is also known as the flexible polyhedron method. This, however, tends to perform poorly against the method described in this article because it makes small, unnecessary steps in areas of little interest.`
+
+const loader = new GLTFLoader();
+const gltf = await new Promise((resolve, reject) => loader.load('tet.glb', data => resolve(data), null, reject));
 
 function balanced_ternary(x, precision) {
     var x = Math.floor(x * Math.pow(3, precision));
@@ -51,6 +59,9 @@ function f(a) {
 
 function vec_add(a, b) {
     return a.map((e, i) => e + b[i]);
+}
+function vec_nudge(a) {
+    return a.map((e) => e + (0.000001 * (Math.random() * 2 - 1)));
 }
 function vec_sub(a, b) {
     return a.map((e, i) => e - b[i]);
@@ -81,7 +92,8 @@ function next_state(f, simplex_orig) {
     let simplex = [...simplex_orig];
     let f_simplex = Array(N + 1);
     for (let i = 0; i < N + 1; i++) {
-        f_simplex[simplex[i][1]] = f(simplex[i][0])
+        simplex[i][0] = vec_nudge(simplex[i][0]);
+        f_simplex[simplex[i][1]] = f(simplex[i][0]);
     }
     simplex.sort((a, b) => f_simplex[a[1]] - f_simplex[b[1]]);
     let xc = Array(N).fill(0);
@@ -210,6 +222,7 @@ state : {
 function init_moves(f, x0_init) {
     let best_score = 1;
     let best_moves = [];
+    let best_gen;
 
     for (let trial = 0; trial < TRIALS; trial++) {
         let x0 = x0_init.map((e) => e + 0.01 * (Math.random() * 2 - 1));
@@ -232,88 +245,116 @@ function init_moves(f, x0_init) {
             best_gen = gen;
         }
     }
-    console.log(best_moves);
+    //console.log(best_moves);
     return [best_moves, best_gen];
 }
 
+function v_smooth(src, target, delta) {
+    src.set(src.x + (target.x - src.x) * delta,
+        src.y + (target.y - src.y) * delta,
+        src.z + (target.z - src.z) * delta);
+}
+
+function v_smooth_arr(src, target, delta) {
+    src.set(src.x + (target[0] - src.x) * delta,
+        src.y + (target[1] - src.y) * delta,
+        src.z + (target[2] - src.z) * delta);
+}
+
+function s_smooth(src, target, delta) {
+    src.setScalar(src.x + (target - src.x) * delta);
+}
+
 class Play extends Phaser.Scene {
-    preload() {
+    async preload() {
         this.load.plugin('rexroundrectangleplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/8b4ad8083e48019f39b37d8f629379851ca8ec13/dist/rexroundrectangleplugin.min.js', true);
     }
 
     process_move(x) {
+        // TODO: freestyle
         if (x == this.moves[0].move) {
             console.log('good');
-            this.moves.shift();
+            console.log(this.moves.shift());
             if (this.moves.length < VISIBLE_MOVES) {
                 this.moves = this.moves.concat(this.gen.next().value);
             }
+
+            if (!this.climax) {
+                this.intensity += 0.01;
+                if (this.intensity > 1) {
+                    this.climax = true;
+                    this.intensity = 1;
+                }
+            }
         } else {
             console.log('bad');
+
+            if (!this.climax) {
+                this.intensity = Math.max(this.intensity - 0.02, 0);
+            }
         }
     }
 
     create() {
         this.cameras.main.setBackgroundColor("#111111");
-        this.graphics = this.add.graphics();
-        this.add.rectangle(50 - 0.5, 100 - 0.5, 320, H - 200).setStrokeStyle(1, 0xf23af2).setOrigin(0);
-        this.add.line(0, 0, 50 + 80 - 0.5, 100 - 0.5, 50 + 80 - 0.5, H - 100 - 0.5).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0, 0);
-        this.add.line(0, 0, 50 + 2 * 80 - 0.5, 100 - 0.5, 50 + 2 * 80 - 0.5, H - 100 - 0.5).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0, 0);
-        this.add.line(0, 0, 50 + 3 * 80 - 0.5, 100 - 0.5, 50 + 3 * 80 - 0.5, H - 100 - 0.5).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0, 0);
-        this.add.text(15, H - 100, 'INTENSITY', { font: '12pt Covenant', fill: '#f23af2' }).setAngle(-90);
-        this.add.rectangle(35 - 0.5, 100 - 0.5, 8, H - 200).setStrokeStyle(1, 0xf23af2).setOrigin(0);
-        this.add.rectangle(377 - 0.5, 600 - 0.5, 8, H - 700).setStrokeStyle(1, 0xf23af2).setOrigin(0);
-        this.add.text(390, 10, 'OBJECTIVE FUNCTION', { font: '12pt Covenant', fill: '#f23af2' });
-        this.add.text(390, 80, 'TRANSFORMS', { font: '12pt Covenant', fill: '#f23af2' });
-        this.add.text(390, 150, 'POLYTOPE', { font: '12pt Covenant', fill: '#f23af2' });
-        this.add.text(W - 200, 150, 'ALGORITHM', { font: '12pt Covenant', fill: '#f23af2' });
-        this.add.text(420, H - 110, 'SCORE', { font: '12pt Covenant', fill: '#f23af2' });
-        this.add.text(90, H - 88, 'EXPAND', { font: '24pt m3x6', fill: '#f23af2' }).setOrigin(0.5);
-        this.add.text(170, H - 88, 'REFLECT', { font: '24pt m3x6', fill: '#f23af2' }).setOrigin(0.5);
-        this.add.text(250, H - 88, 'CONTRACT', { font: '24pt m3x6', fill: '#f23af2' }).setOrigin(0.5);
-        this.add.text(330, H - 88, 'SHRINK', { font: '24pt m3x6', fill: '#f23af2' }).setOrigin(0.5);
+        this.add.rectangle(F(50) - 0.5, F(100) - 0.5, F(320), H - F(200)).setStrokeStyle(1, 0xf23af2).setOrigin(0);
+        for (let i = 1; i <= 3; i++) {
+            this.add.line(0, 0, F(50 + 80 * i) - 0.5, F(100) - 0.5, F(50 + 80 * i) - 0.5, H - F(100) - 0.5).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0, 0);
+        }
+        this.add.text(F(35), H - F(100), 'INTENSITY', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1).setAngle(-90);
+        this.add.rectangle(F(377) - 0.5, F(600) - 0.5, F(8), H - F(700)).setStrokeStyle(1, 0xf23af2).setOrigin(0);
+        this.add.text(F(390), F(10), 'OBJECTIVE FUNCTION', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
+        this.add.text(F(390), F(80), 'TRANSFORMS', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
+        this.add.text(W - F(200), F(150), 'ALGORITHM', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
+        this.add.text(F(420), H - F(110), 'SCORE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
+        this.add.text(F(90), H - F(88), 'EXPAND', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
+        this.add.text(F(170), H - F(88), 'REFLECT', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
+        this.add.text(F(250), H - F(88), 'CONTRACT', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
+        this.add.text(F(330), H - F(88), 'SHRINK', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
 
-        this.add.text(90 + 2, H - 65, 'Z', { font: '72pt Thaleah', fill: '#f23af2' }).setOrigin(0.5);
-        this.add.text(170 + 2, H - 65, 'X', { font: '72pt Thaleah', fill: '#f23af2' }).setOrigin(0.5);
-        this.add.text(250 + 2, H - 65, 'C', { font: '72pt Thaleah', fill: '#f23af2' }).setOrigin(0.5);
-        this.add.text(330 + 2, H - 65, 'V', { font: '72pt Thaleah', fill: '#f23af2' }).setOrigin(0.5);
+        this.add.text(F(90 + 2), H - F(65), 'Z', { font: `${72 * FS}pt Thaleah`, fill: '#f23af2' }).setOrigin(0.5);
+        this.add.text(F(170 + 2), H - F(65), 'X', { font: `${72 * FS}pt Thaleah`, fill: '#f23af2' }).setOrigin(0.5);
+        this.add.text(F(250 + 2), H - F(65), 'C', { font: `${72 * FS}pt Thaleah`, fill: '#f23af2' }).setOrigin(0.5);
+        this.add.text(F(330 + 2), H - F(65), 'V', { font: `${72 * FS}pt Thaleah`, fill: '#f23af2' }).setOrigin(0.5).setResolution(1.25);
 
-        let expand_receptor = this.add.container(90 - 0.5, H - 140 - 0.5);
-        expand_receptor.add(this.add.rexRoundRectangle(0, 0, 80 - 2 * 5, 70, 10).setStrokeStyle(2, 0xf23af2, 0.75));
-        expand_receptor.add(this.add.polygon(0, 0, [[5, 8], [15, 8], [15, 15], [30, 0], [15, -15], [15, -8], [5, -8]]).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
-        expand_receptor.add(this.add.polygon(0, 0, [[-5, -8], [-15, -8], [-15, -15], [-30, -0], [-15, 15], [-15, 8], [-5, 8]]).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
+        let expand_receptor = this.add.container(F(90) - 0.5, H - F(140) - 0.5);
+        expand_receptor.add(this.add.rexRoundRectangle(0, 0, F(80 - 2 * 5), F(70), F(10)).setStrokeStyle(2, 0xf23af2, 0.75));
+        expand_receptor.add(this.add.polygon(0, 0, [[5 * R2, 8 * R2], [15 * R2, 8 * R2], [15 * R2, 15 * R2], [30 * R2, 0], [15 * R2, -15 * R2], [15 * R2, -8 * R2], [5 * R2, -8 * R2]]).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
+        expand_receptor.add(this.add.polygon(0, 0, [[-5 * R2, -8 * R2], [-15 * R2, -8 * R2], [-15 * R2, -15 * R2], [-30 * R2, -0], [-15 * R2, 15 * R2], [-15 * R2, 8 * R2], [-5 * R2, 8 * R2]]).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
 
-        let reflect_receptor = this.add.container(170 - 0.5, H - 140 - 0.5);
-        reflect_receptor.add(this.add.rexRoundRectangle(0, 0, 80 - 2 * 5, 70, 10).setStrokeStyle(2, 0xf23af2, 0.75));
-        reflect_receptor.add(this.add.line(0, 0, 0, 20, 0, -20).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
-        reflect_receptor.add(this.add.triangle(0, 0, 7, 0, 25, 12, 25, -12).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
-        reflect_receptor.add(this.add.triangle(0, 0, -7, 0, -25, 12, -25, -12).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
+        let reflect_receptor = this.add.container(F(170) - 0.5, H - F(140) - 0.5);
+        reflect_receptor.add(this.add.rexRoundRectangle(0, 0, F(80 - 2 * 5), F(70), F(10)).setStrokeStyle(2, 0xf23af2, 0.75));
+        reflect_receptor.add(this.add.line(0, 0, 0, 20 * R2, 0, -20 * R2).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
+        reflect_receptor.add(this.add.triangle(0, 0, 7 * R2, 0, 25 * R2, 12 * R2, 25 * R2, -12 * R2).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
+        reflect_receptor.add(this.add.triangle(0, 0, -7 * R2, 0, -25 * R2, 12 * R2, -25 * R2, -12 * R2).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
 
-        let contract_receptor = this.add.container(250 - 0.5, H - 140 - 0.5);
-        contract_receptor.add(this.add.rexRoundRectangle(0, 0, 80 - 2 * 5, 70, 10).setStrokeStyle(2, 0xf23af2, 0.75));
-        contract_receptor.add(this.add.polygon(0, 0, [[-30 + 2, -8], [-20 + 2, -8], [-20 + 2, -15], [-5 + 2, -0], [-20 + 2, 15], [-20 + 2, 8], [-30 + 2, 8]]).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
-        contract_receptor.add(this.add.polygon(0, 0, [[30 - 2, 8], [20 - 2, 8], [20 - 2, 15], [5 - 2, 0], [20 - 2, -15], [20 - 2, -8], [30 - 2, -8]]).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
+        let contract_receptor = this.add.container(F(250) - 0.5, H - F(140) - 0.5);
+        contract_receptor.add(this.add.rexRoundRectangle(0, 0, F(80 - 2 * 5), F(70), F(10)).setStrokeStyle(2, 0xf23af2, 0.75));
+        contract_receptor.add(this.add.polygon(0, 0, [[(-30 + 2) * R2, -8 * R2], [(-20 + 2) * R2, -8 * R2], [(-20 + 2) * R2, -15 * R2], [(-5 + 2) * R2, -0], [(-20 + 2) * R2, 15 * R2], [(-20 + 2) * R2, 8 * R2], [(-30 + 2) * R2, 8 * R2]]).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
+        contract_receptor.add(this.add.polygon(0, 0, [[(30 - 2) * R2, 8 * R2], [(20 - 2) * R2, 8 * R2], [(20 - 2) * R2, 15 * R2], [(5 - 2) * R2, 0], [(20 - 2) * R2, -15 * R2], [(20 - 2) * R2, -8 * R2], [(30 - 2) * R2, -8 * R2]]).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
 
-        let shrink_receptor = this.add.container(330 - 0.5, H - 140 - 0.5);
-        shrink_receptor.add(this.add.rexRoundRectangle(0, 0, 80 - 2 * 5, 70, 10).setStrokeStyle(2, 0xf23af2, 0.75));
+        let shrink_receptor = this.add.container(F(330) - 0.5, H - F(140) - 0.5);
+        shrink_receptor.add(this.add.rexRoundRectangle(0, 0, F(80 - 2 * 5), F(70), F(10)).setStrokeStyle(2, 0xf23af2, 0.75));
         for (let [xm, ym] of [[1, 1], [1, -1], [-1, -1], [-1, 1]]) {
+            xm *= R2;
+            ym *= R2;
             shrink_receptor.add(this.add.polygon(0, 0, [[3 * xm, 3 * ym], [20 * xm, 3 * ym], [14 * xm, 8 * ym], [26 * xm, 20 * ym], [20 * xm, 26 * ym], [8 * xm, 14 * ym], [3 * xm, 20 * ym]]).setStrokeStyle(2, 0xf23af2, 0.75).setOrigin(0, 0));
         }
 
         this.receptors = [expand_receptor, reflect_receptor, contract_receptor, shrink_receptor];
 
-        this.add.rectangle(50 - 0.5, 5 - 0.5, 320, 100 - 5).setStrokeStyle(1, 0xf23af2).setOrigin(0);
+        this.add.rectangle(F(50) - 0.5, F(5) - 0.5, F(320), F(95)).setStrokeStyle(1, 0xf23af2).setOrigin(0);
         let mask_shape = this.make.graphics();
         mask_shape.fillStyle(0xffffff);
         mask_shape.beginPath();
-        mask_shape.fillRect(50 - 0.5 + 1, 5 - 0.5 + 1, 320 - 2, 100 - 5 - 2);
+        mask_shape.fillRect(F(50) - 0.5 + 1, F(5) - 0.5 + 1, F(320) - 2, F(95) - 2);
         let mask = mask_shape.createGeometryMask();
         this.wikipedia = this.make.text({
-            x: 55, y: -5, text: WIKIPEDIA, style: { font: '24pt m3x6', fill: 'white', lineSpacing: -15, wordWrap: { width: 320 } }
+            x: F(55), y: F(-5), text: WIKIPEDIA, style: { font: `${24 * FS}pt m3x6`, fill: 'white', lineSpacing: R2 * -15, wordWrap: { width: F(320) } }
         })
         this.wikipedia_y = 0;
         this.wikipedia.setMask(mask);
-        console.log(this.wikipedia)
+        //console.log(this.wikipedia)
         /*for (let receptor of this.receptors) {
             receptor.setScale(0.9);
             this.tweens.add({
@@ -333,7 +374,7 @@ class Play extends Phaser.Scene {
             ease: 'Sine.easeOut',
         });*/
 
-        this.tmp = this.add.text(500, 500, 'test');
+        this.tmp = this.add.text(F(500), F(500), 'test');
         [this.moves, this.gen] = init_moves(f, [-0.5, -1, -2, -2]);
         let keycodes = [Phaser.Input.Keyboard.KeyCodes.Z, Phaser.Input.Keyboard.KeyCodes.X, Phaser.Input.Keyboard.KeyCodes.C, Phaser.Input.Keyboard.KeyCodes.V];
         for (let i = 0; i < keycodes.length; i++) {
@@ -341,41 +382,189 @@ class Play extends Phaser.Scene {
                 this.process_move(i);
             }, this);
         }
+
+        this.intensity = 0;
+        this.add.rectangle(F(35), F(100), F(9), H - F(200), 0xf23af2).setOrigin(0);
+        this.intensity_mask = this.add.rectangle(F(35) + 1, F(100) + 1, F(9) - 2, H - F(200) - 2, 0x000000).setOrigin(0);
+        this.polytope_canvas = document.createElement('canvas');
+        document.body.appendChild(this.polytope_canvas);
+        this.polytope_canvas.style.position = "absolute";
+        this.polytope_canvas.style.top = `120px`;
+        this.polytope_canvas.style.left = `312px`;
+        this.polytope_canvas.width = 480;
+        this.polytope_canvas.height = 480;
+
+
+        this.add.text(F(390), F(150), 'POLYTOPE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
+        this.three = {};
+        this.three.renderer = new THREE.WebGLRenderer({ alpha: true, canvas: this.polytope_canvas });
+        this.three.renderer.setSize(this.polytope_canvas.width, this.polytope_canvas.height);
+        this.three.scene = new THREE.Scene();
+        this.three.camera = new THREE.PerspectiveCamera(60, this.polytope_canvas.width / this.polytope_canvas.height, 0.1, 1000);
+        const light = new THREE.AmbientLight(0x808080);
+        this.three.scene.add(light);
+        const light1 = new THREE.PointLight(0xffffff, 1, 0);
+        light1.position.set(0, 200, 0);
+        this.three.scene.add(light1);
+
+        const light2 = new THREE.PointLight(0xffffff, 1, 0);
+        light2.position.set(100, 200, 100);
+        this.three.scene.add(light2);
+
+        const light3 = new THREE.PointLight(0xffffff, 1, 0);
+        light3.position.set(- 100, - 200, - 100);
+        this.three.scene.add(light3);
+        this.three.camera.position.z = 5;
+
+        this.three.vertices = [];
+        this.three.vertex_group = new THREE.Group();
+        this.three.scene.add(this.three.vertex_group);
+        let sphere_geom = new THREE.SphereGeometry(0.05, 32, 16);
+        for (let i = 0; i < N + 1; i++) {
+            let material = new THREE.MeshPhongMaterial({ color: 0x444444, shininess: 100 });
+            let vertex = new THREE.Mesh(sphere_geom, material);
+            this.three.vertices.push(vertex);
+            this.three.vertex_group.add(vertex);
+        }
+        this.three.camera_pos = new THREE.Vector3();
+        this.three.bounding_box = new THREE.Box3();
+        this.three.bounding_center = new THREE.Vector3();
+        this.three.bounding_sphere = new THREE.Sphere(this.three.bounding_center);
+        this.three.sphere_debug_geom = new THREE.SphereGeometry(1, 16, 8);
+        this.three.sphere_debug = new THREE.LineSegments(this.three.sphere_debug_geom, new THREE.LineBasicMaterial({ transparent: true, opacity: 0.2 }));
+        this.three.scene.add(this.three.sphere_debug);
+        this.field_graphics = this.add.graphics();
+
+        this.three.line_geom = new THREE.CylinderGeometry(0.01, 0.01, 1);
+        this.three.line_geom.applyMatrix4(new THREE.Matrix4().makeTranslation(0, 0.5, 0));
+        this.three.line_geom.applyMatrix4(new THREE.Matrix4().makeRotationX(THREE.Math.degToRad(90)));
+        this.three.line_material = new THREE.MeshPhongMaterial({ color: 0x222222, shininess: 100 });
+        this.three.lines = [];
+        this.three.line_vecs = [];
+        for (let i = 0; i < N + 1; i++) {
+            for (let j = i + 1; j < N + 1; j++) {
+                let line = new THREE.Mesh(this.three.line_geom, this.three.line_material);
+                this.three.lines[i * (N + 1) + j] = line;
+                this.three.line_vecs[i * (N + 1) + j] = new THREE.Vector3();
+                this.three.scene.add(line);
+            }
+        }
+
+        this.three.tets = [];
+        let tet_geom = gltf.scene.children[0].geometry;
+        tet_geom.applyMatrix4(new THREE.Matrix4().makeScale(1, -1, -1));
+
+        let tet_material = new THREE.MeshNormalMaterial({ transparent: true, opacity: 0.2 });//new THREE.MeshPhongMaterial({ color: 0x0000ff });
+
+        for (let i = 0; i < N + 1; i++) {
+            let tet = new THREE.Mesh(tet_geom, tet_material);
+            tet.matrixAutoUpdate = false;
+            this.three.tets.push(tet);
+            this.three.scene.add(tet);
+        }
+        let field_mask_shape = this.make.graphics();
+        field_mask_shape.fillStyle(0xffffff);
+        field_mask_shape.beginPath();
+        field_mask_shape.fillRect(F(50) - 0.5 + 1, F(100) - 0.5 + 1, F(320) - 2, H - F(200) - 2);
+        let field_mask = field_mask_shape.createGeometryMask();
+        this.field_graphics.setMask(field_mask);
     }
 
     update(time, delta) {
-        this.graphics.clear();
+        this.field_graphics.clear();
         //console.log(this.moves);
-        let debug = [this.moves.length];
-        this.graphics.lineStyle(3, 0xdddd00);
+        let debug = [this.intensity, this.moves.length];
+        this.field_graphics.lineStyle(3, 0xdddd00);
         for (let i = 0; i < VISIBLE_MOVES; i++) {
             let m = this.moves[i].move;
             debug.push(`${'ZXCV'[m]} ${this.moves[i].mult}`);
-            this.graphics.fillStyle([0xdd0000, 0x00dd00, 0x00dddd, 0x0000dd][m]);
-            let x = 90 + 80 * m - 0.5;
-            let y = H - 140 - i * 90 - 0.5;
-            this.graphics.fillRoundedRect(x - 35, y - 35, 70, 70, 10);
+            this.field_graphics.fillStyle([0xbb0000, 0x00bb00, 0x00bbbb, 0x0000dd][m]);
+            let x = F(90 + 80 * m) - 0.5;
+            let y = H - F(140 + i * 90) - 0.5;
+            this.field_graphics.lineStyle(2, 0x000000);
+            this.field_graphics.fillRoundedRect(x - F(35), y - F(35), F(70), F(70), F(10));
+            this.field_graphics.strokeRoundedRect(x - F(35), y - F(35), F(70), F(70), F(10));
+
+            this.field_graphics.lineStyle(3, 0xeeee00);
             if (this.moves[i].mult > 1) {
-                this.graphics.lineBetween(x - 30, y, x + 30, y);
+                this.field_graphics.lineBetween(x - F(30), y, x + F(30), y);
                 let digits = balanced_ternary(this.moves[i].mult, 0);
                 let start = -7.5 * (digits.length - 1);
                 for (let j = 0; j < digits.length; j++) {
                     switch (digits[j]) {
                         case -1:
-                            this.graphics.lineBetween(x + start + 15 * j, y, x + start + 15 * j, y + 20);
+                            this.field_graphics.lineBetween(x + F(start + 15 * j), y, x + F(start + 15 * j), y + F(20));
                             break;
                         case 0:
-                            this.graphics.strokeCircle(x + start + 15 * j, y, 5);
+                            this.field_graphics.strokeCircle(x + F(start + 15 * j), y, F(5));
                             break;
                         case 1:
-                            this.graphics.lineBetween(x + start + 15 * j, y, x + start + 15 * j, y - 20);
+                            this.field_graphics.lineBetween(x + F(start + 15 * j), y, x + F(start + 15 * j), y - F(20));
                             break;
                     }
                 }
             }
         }
-        this.wikipedia_y = (this.wikipedia_y - delta * 0.01) % (this.wikipedia.height + 100);
-        this.wikipedia.y = this.wikipedia_y - 5 + 95;
+        if (!this.climax) {
+            this.intensity = Math.max(this.intensity - 0.00003 * this.intensity * delta, 0);
+        }
+        let intensity_mask_target = (1 - this.intensity) * (H - F(200) - 2);
+        this.intensity_mask.height += (intensity_mask_target - this.intensity_mask.height) * 0.01 * delta;
+
+        this.wikipedia_y = (this.wikipedia_y - delta * R2 * (0.01 + 0.19 * Math.pow(this.intensity, 4))) % (this.wikipedia.height + F(100));
+        this.wikipedia.y = this.wikipedia_y - F(5) + (95);
+
+        // TODO: 4d rotations
+        for (let i = 0; i < N + 1; i++) {
+            let v = this.moves[0].simplex[i];
+            v_smooth_arr(this.three.vertices[v[1]].position, v[0], delta * 0.01);
+        }
+        this.three.bounding_box.setFromObject(this.three.vertex_group);
+        this.three.bounding_box.getBoundingSphere(this.three.bounding_sphere);
+        //console.log(this.three.bounding_sphere);
+        v_smooth(this.three.camera_pos, this.three.bounding_sphere.center, delta * 0.005);
+        this.three.camera.position.copy(this.three.camera_pos);
+        this.three.camera.rotation.y += 0.0003 * delta;
+        this.three.camera.position.x += 2 * this.three.bounding_sphere.radius * Math.sin(this.three.camera.rotation.y);
+        this.three.camera.position.z += 2 * this.three.bounding_sphere.radius * Math.cos(this.three.camera.rotation.y);
+        this.three.camera.far = this.three.bounding_sphere.radius * 10;
+        this.three.camera.near = this.three.bounding_sphere.radius / 10;
+        this.three.camera.updateProjectionMatrix();
+        v_smooth(this.three.sphere_debug.position, this.three.bounding_sphere.center, delta * 0.01);
+        this.three.sphere_debug.scale.setScalar(this.three.bounding_sphere.radius);
+        for (let i = 0; i < N + 1; i++) {
+            this.three.vertices[i].scale.setScalar(this.three.bounding_sphere.radius);
+        }
+        for (let i = 0; i < N + 1; i++) {
+            for (let j = i + 1; j < N + 1; j++) {
+                let ind = i * (N + 1) + j;
+                this.three.lines[ind].position.copy(this.three.vertices[i].position);
+                this.three.line_vecs[ind].copy(this.three.vertices[j].position);
+                this.three.line_vecs[ind].sub(this.three.vertices[i].position);
+                this.three.lines[ind].scale.set(this.three.bounding_sphere.radius, this.three.bounding_sphere.radius, this.three.line_vecs[ind].length());
+                this.three.lines[ind].lookAt(this.three.vertices[j].position);
+            }
+        }
+        /*for (let i = 0; i < N + 1; i++) {
+            //this.three.vertices[i].scale.setScalar(this.three.bounding_sphere.radius);
+            this.three.tets[i].matrix.setPosition(this.three.vertices[i].position);
+
+        }*/
+        this.three.tets[0].matrix.makeBasis(this.three.line_vecs[1 * (N + 1) + 2], this.three.line_vecs[1 * (N + 1) + 3], this.three.line_vecs[1 * (N + 1) + 4]);
+        this.three.tets[0].matrix.setPosition(this.three.vertices[1].position);
+        this.three.tets[1].matrix.makeBasis(this.three.line_vecs[0 * (N + 1) + 2], this.three.line_vecs[0 * (N + 1) + 3], this.three.line_vecs[0 * (N + 1) + 4]);
+        this.three.tets[1].matrix.setPosition(this.three.vertices[0].position);
+        this.three.tets[2].matrix.makeBasis(this.three.line_vecs[0 * (N + 1) + 1], this.three.line_vecs[0 * (N + 1) + 3], this.three.line_vecs[0 * (N + 1) + 4]);
+        this.three.tets[2].matrix.setPosition(this.three.vertices[0].position);
+        this.three.tets[3].matrix.makeBasis(this.three.line_vecs[0 * (N + 1) + 1], this.three.line_vecs[0 * (N + 1) + 2], this.three.line_vecs[0 * (N + 1) + 4]);
+        this.three.tets[3].matrix.setPosition(this.three.vertices[0].position);
+        this.three.tets[4].matrix.makeBasis(this.three.line_vecs[0 * (N + 1) + 1], this.three.line_vecs[0 * (N + 1) + 2], this.three.line_vecs[0 * (N + 1) + 3]);
+        this.three.tets[4].matrix.setPosition(this.three.vertices[0].position);
+        this.three.renderer.render(this.three.scene, this.three.camera);
+        //console.log(this.three.vertices);
+
+
+        debug.push(this.three.bounding_sphere.radius);
         this.tmp.setText(debug);
     }
 }
@@ -395,7 +584,7 @@ async function main() {
         type: Phaser.AUTO,
         width: W,
         height: H,
-        zoom: 1 / window.devicePixelRatio,
+        zoom: 1 / R,
         scene: Play,
         /*scale: {
             autoCenter: Phaser.Scale.CENTER_BOTH
