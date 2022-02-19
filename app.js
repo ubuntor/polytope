@@ -286,8 +286,18 @@ class Play extends Phaser.Scene {
             this.receptors[x].setScale(0.8);
         }
         // TODO: freestyle
-        if (x == this.moves[0].move || x == -1) {
-            console.log('good');
+        if (x == this.moves[0].move || this.climax || x == -1) {
+            if (x != -1) {
+                this.flashes[x].setScale(1);
+                this.flashes[x].setAlpha(1);
+            }
+            if (this.climax) {
+                this.freestyle_score += 500;
+                this.score += 500;
+            } else {
+                let points = Math.floor(6969 * (1 + 4 * this.intensity) * Math.pow(this.potential, 2) * this.moves[0].mult);
+                this.score += points;
+            }
             for (let i = 0; i < N + 1; i++) {
                 if (this.moves[0].changed[i]) {
                     this.three.vertex_mats[i].color.setHex(0xf23af2);
@@ -297,9 +307,8 @@ class Play extends Phaser.Scene {
             if (this.moves.length < VISIBLE_MOVES) {
                 this.moves = this.moves.concat(this.gen.next().value);
             }
-
             if (!this.climax) {
-                this.intensity += 0.01;
+                this.intensity += 0.01 * this.potential;
                 if (this.intensity > 1) {
                     this.climax = true;
                     this.intensity = 1;
@@ -307,8 +316,6 @@ class Play extends Phaser.Scene {
             }
             this.potential = 0;
         } else {
-            console.log('bad');
-
             if (!this.climax) {
                 this.intensity = Math.max(this.intensity - 0.015, 0);
             }
@@ -316,7 +323,17 @@ class Play extends Phaser.Scene {
     }
 
     create() {
-        this.cameras.main.setBackgroundColor("#111111");
+        this.background_canvas = document.createElement('canvas');
+        document.body.appendChild(this.background_canvas);
+        this.background_canvas.style.position = "absolute";
+        this.background_canvas.style.top = `0px`;
+        this.background_canvas.style.left = `0px`;
+        this.background_canvas.width = 960;
+        this.background_canvas.height = 720;
+        this.background_canvas.style.zIndex = '-2';
+        this.background_ctx = this.background_canvas.getContext('2d');
+        this.background_ctx.fillStyle = "#111111";
+        //this.cameras.main.setBackgroundColor("#111111");
         this.add.rectangle(F(50) - 0.5, F(100) - 0.5, F(320), H - F(200)).setStrokeStyle(1, 0xf23af2).setOrigin(0);
         for (let i = 1; i <= 3; i++) {
             this.add.line(0, 0, F(50 + 80 * i) - 0.5, F(100) - 0.5, F(50 + 80 * i) - 0.5, H - F(100) - 0.5).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0, 0);
@@ -324,7 +341,7 @@ class Play extends Phaser.Scene {
         this.add.text(F(390), F(10), 'OBJECTIVE FUNCTION', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(F(390), F(80), 'TRANSFORMS', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(W - F(200), F(150), 'ALGORITHM', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
-        this.add.text(F(420), H - F(50), 'SCORE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
+        this.add.text((F(400) + W) / 2, H - F(45), 'SCORE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0.5);
         this.add.text(F(90), H - F(88), 'EXPAND', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
         this.add.text(F(170), H - F(88), 'REFLECT', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
         this.add.text(F(250), H - F(88), 'CONTRACT', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
@@ -372,17 +389,8 @@ class Play extends Phaser.Scene {
         })
         this.wikipedia_y = 0;
         this.wikipedia.setMask(mask);
-        //console.log(this.wikipedia)
-        /*for (let receptor of this.receptors) {
-            receptor.setScale(0.9);
-            this.tweens.add({
-                targets: receptor,
-                scale: 1,
-                loop: -1,
-                duration: 500,
-                ease: 'Sine.easeOut',
-            });
-        }
+
+        /*
         this.cameras.main.zoom = 1.01;
         this.tweens.add({
             targets: this.cameras.main,
@@ -423,6 +431,7 @@ class Play extends Phaser.Scene {
         this.polytope_canvas.style.left = `312px`;
         this.polytope_canvas.width = 480;
         this.polytope_canvas.height = 480;
+        this.polytope_canvas.style.zIndex = '-1';
         this.three = {};
         this.three.renderer = new THREE.WebGLRenderer({ alpha: true, canvas: this.polytope_canvas });
         this.three.renderer.setSize(this.polytope_canvas.width, this.polytope_canvas.height);
@@ -485,7 +494,6 @@ class Play extends Phaser.Scene {
         tet_geom.applyMatrix4(new THREE.Matrix4().makeScale(1, -1, -1));
 
         let tet_material = new THREE.MeshNormalMaterial({ transparent: true, opacity: 0.5 });
-        //new THREE.MeshPhongMaterial({ color: 0x0000ff });
 
         for (let i = 0; i < N + 1; i++) {
             let tet = new THREE.Mesh(tet_geom, tet_material);
@@ -518,17 +526,24 @@ class Play extends Phaser.Scene {
         let field_mask = field_mask_shape.createGeometryMask();
         this.field_graphics.setMask(field_mask);
 
+        this.flashes = [];
+        for (let i = 0; i < 4; i++) {
+            this.flashes.push(this.add.rexRoundRectangle(F(90 + 80 * i) - 0.5, H - F(140) - 0.5, F(70), F(70), F(10), 0xFFFFFF).setAlpha(0));
+        }
+
         this.misc_graphics = this.add.graphics();
 
         this.score = 0;
+        this.score_draw = 0;
+        this.freestyle_score = 0;
     }
 
     update(time, delta) {
-        // TODO: add intensity term to potential increase
+        this.background_ctx.fillRect(0, 0, 960, 720);
         this.potential = Math.min(this.potential + 0.001 * delta * (1 + 150 * Math.pow(this.intensity, 3)), 1);
         this.field_graphics.clear();
         //console.log(this.moves);
-        let debug = [this.intensity, this.potential, this.moves.length];
+        let debug = [this.intensity, this.potential, this.score];
         this.field_graphics.lineStyle(3, 0xdddd00);
         for (let i = 0; i < VISIBLE_MOVES; i++) {
             let m = this.moves[i].move;
@@ -560,9 +575,29 @@ class Play extends Phaser.Scene {
                 }
             }
         }
+        this.score_draw += 0.01 * delta * (this.score - this.score_draw);
         this.misc_graphics.clear();
         this.misc_graphics.lineStyle(2, 0xdddd00);
-        this.misc_graphics.lineBetween(F(450), H - F(20), W - F(50), H - F(20));
+        {
+            let x = (F(400) + W) / 2;
+            let y = H - F(20);
+            let digits = balanced_ternary(this.score_draw, 0);
+            let start = -7.5 * (digits.length - 1);
+            this.misc_graphics.lineBetween(x - F(digits.length * 7.5 + 7.5), y, x + F(digits.length * 7.5 + 7.5), y);
+            for (let j = 0; j < digits.length; j++) {
+                switch (digits[j]) {
+                    case -1:
+                        this.misc_graphics.lineBetween(x + F(start + 15 * j), y, x + F(start + 15 * j), y + F(15));
+                        break;
+                    case 0:
+                        this.misc_graphics.strokeCircle(x + F(start + 15 * j), y, F(5));
+                        break;
+                    case 1:
+                        this.misc_graphics.lineBetween(x + F(start + 15 * j), y, x + F(start + 15 * j), y - F(15));
+                        break;
+                }
+            }
+        }
         // TODO: draw number line, transforms
 
         if (!this.climax) {
@@ -575,12 +610,12 @@ class Play extends Phaser.Scene {
         this.wikipedia_y = (this.wikipedia_y - delta * R2 * (0.01 + 0.19 * Math.pow(this.intensity, 4))) % (this.wikipedia.height + F(100));
         this.wikipedia.y = this.wikipedia_y - F(5) + (95);
 
-        this.three.r_zw += 1 * 0.00005 * delta;
-        this.three.r_xy += 1.02 * 0.00005 * delta;
-        this.three.r_yw += 1.04 * 0.00005 * delta;
-        this.three.r_zx += 1.06 * 0.00005 * delta;
-        this.three.r_zy += 1.08 * 0.00005 * delta;
-        this.three.r_xy += 1.1 * 0.00005 * delta;
+        this.three.r_zw += 1 * 0.00005 * delta * (1 + 3 * this.intensity);
+        this.three.r_xy += 1.02 * 0.00005 * delta * (1 + 3 * this.intensity);
+        this.three.r_yw += 1.04 * 0.00005 * delta * (1 + 3 * this.intensity);
+        this.three.r_zx += 1.06 * 0.00005 * delta * (1 + 3 * this.intensity);
+        this.three.r_zy += 1.08 * 0.00005 * delta * (1 + 3 * this.intensity);
+        this.three.r_xy += 1.1 * 0.00005 * delta * (1 + 3 * this.intensity);
 
         this.three.r1.set(
             cos(this.three.r_xy), -sin(this.three.r_xy), 0, 0,
@@ -645,7 +680,6 @@ class Play extends Phaser.Scene {
             }
         }
         for (let i = 0; i < N + 1; i++) {
-            //this.three.vertices[i].scale.setScalar(this.three.bounding_sphere.radius);
             this.three.vertex_mats[i].color.lerp(this.three.vertex_color, 0.005 * delta);
         }
         this.three.tets[0].matrix.makeBasis(this.three.line_vecs[1 * (N + 1) + 2], this.three.line_vecs[1 * (N + 1) + 3], this.three.line_vecs[1 * (N + 1) + 4]);
@@ -662,6 +696,8 @@ class Play extends Phaser.Scene {
         //console.log(this.three.vertices);
         for (let i = 0; i < 4; i++) {
             this.receptors[i].setScale(this.receptors[i].scale + 0.01 * delta * (1 - this.receptors[i].scale));
+            this.flashes[i].setScale(this.flashes[i].scale + 0.01 * delta * (1.5 - this.flashes[i].scale));
+            this.flashes[i].setAlpha(this.flashes[i].alpha + 0.01 * delta * (0 - this.flashes[i].alpha));
         }
 
         debug.push(this.three.bounding_sphere.radius);
@@ -686,6 +722,7 @@ async function main() {
         height: H,
         zoom: 1 / R,
         scene: Play,
+        transparent: true,
         /*scale: {
             autoCenter: Phaser.Scale.CENTER_BOTH
         }*/
