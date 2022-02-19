@@ -282,8 +282,11 @@ class Play extends Phaser.Scene {
     }
 
     process_move(x) {
+        if (x != -1) {
+            this.receptors[x].setScale(0.8);
+        }
         // TODO: freestyle
-        if (x == this.moves[0].move) {
+        if (x == this.moves[0].move || x == -1) {
             console.log('good');
             for (let i = 0; i < N + 1; i++) {
                 if (this.moves[0].changed[i]) {
@@ -302,11 +305,12 @@ class Play extends Phaser.Scene {
                     this.intensity = 1;
                 }
             }
+            this.potential = 0;
         } else {
             console.log('bad');
 
             if (!this.climax) {
-                this.intensity = Math.max(this.intensity - 0.02, 0);
+                this.intensity = Math.max(this.intensity - 0.015, 0);
             }
         }
     }
@@ -317,12 +321,10 @@ class Play extends Phaser.Scene {
         for (let i = 1; i <= 3; i++) {
             this.add.line(0, 0, F(50 + 80 * i) - 0.5, F(100) - 0.5, F(50 + 80 * i) - 0.5, H - F(100) - 0.5).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0, 0);
         }
-        this.add.text(F(385), H - F(98), 'POTENTIAL', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(1, 1).setAngle(90);
-        this.add.rectangle(F(377) - 0.5, F(600) - 0.5, F(8), H - F(700)).setStrokeStyle(1, 0xf23af2).setOrigin(0);
         this.add.text(F(390), F(10), 'OBJECTIVE FUNCTION', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(F(390), F(80), 'TRANSFORMS', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(W - F(200), F(150), 'ALGORITHM', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
-        this.add.text(F(420), H - F(110), 'SCORE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
+        this.add.text(F(420), H - F(50), 'SCORE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(F(90), H - F(88), 'EXPAND', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
         this.add.text(F(170), H - F(88), 'REFLECT', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
         this.add.text(F(250), H - F(88), 'CONTRACT', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
@@ -398,11 +400,22 @@ class Play extends Phaser.Scene {
                 this.process_move(i);
             }, this);
         }
+        // TODO: remove this
+        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M).on('down', function (key, event) {
+            this.process_move(-1);
+        }, this);
 
         this.add.text(F(35), H - F(100), 'INTENSITY', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1).setAngle(-90);
         this.intensity = 0;
         this.add.rectangle(F(35), F(100), F(9), H - F(200), 0xf23af2).setOrigin(0);
         this.intensity_mask = this.add.rectangle(F(35) + 1, F(100) + 1, F(9) - 2, H - F(200) - 2, 0x000000).setOrigin(0);
+
+        this.add.text(F(385), H - F(98), 'POTENTIAL', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(1, 1).setAngle(90);
+        this.potential = 1;
+        this.add.rectangle(F(377), F(600), F(8), H - F(700), 0xf23af2).setOrigin(0);
+        this.potential_mask = this.add.rectangle(F(377) + 1, F(600) + 1, F(8) - 2, 0, 0x000000).setOrigin(0);
+
+        this.add.text(F(390), F(180), 'POLYTOPE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.polytope_canvas = document.createElement('canvas');
         document.body.appendChild(this.polytope_canvas);
         this.polytope_canvas.style.position = "absolute";
@@ -410,9 +423,6 @@ class Play extends Phaser.Scene {
         this.polytope_canvas.style.left = `312px`;
         this.polytope_canvas.width = 480;
         this.polytope_canvas.height = 480;
-
-
-        this.add.text(F(390), F(180), 'POLYTOPE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.three = {};
         this.three.renderer = new THREE.WebGLRenderer({ alpha: true, canvas: this.polytope_canvas });
         this.three.renderer.setSize(this.polytope_canvas.width, this.polytope_canvas.height);
@@ -514,16 +524,18 @@ class Play extends Phaser.Scene {
     }
 
     update(time, delta) {
+        // TODO: add intensity term to potential increase
+        this.potential = Math.min(this.potential + 0.001 * delta * (1 + 150 * Math.pow(this.intensity, 3)), 1);
         this.field_graphics.clear();
         //console.log(this.moves);
-        let debug = [this.intensity, this.moves.length];
+        let debug = [this.intensity, this.potential, this.moves.length];
         this.field_graphics.lineStyle(3, 0xdddd00);
         for (let i = 0; i < VISIBLE_MOVES; i++) {
             let m = this.moves[i].move;
             debug.push(`${'ZXCV'[m]} ${this.moves[i].mult}`);
             this.field_graphics.fillStyle([0xbb0000, 0x00bb00, 0x00bbbb, 0x0000dd][m]);
             let x = F(90 + 80 * m) - 0.5;
-            let y = H - F(140 + i * 90) - 0.5;
+            let y = H - F(140 + (i + 1 - this.potential) * 90) - 0.5;
             this.field_graphics.lineStyle(2, 0x000000);
             this.field_graphics.fillRoundedRect(x - F(35), y - F(35), F(70), F(70), F(10));
             this.field_graphics.strokeRoundedRect(x - F(35), y - F(35), F(70), F(70), F(10));
@@ -558,11 +570,10 @@ class Play extends Phaser.Scene {
         }
         let intensity_mask_target = (1 - this.intensity) * (H - F(200) - 2);
         this.intensity_mask.height += (intensity_mask_target - this.intensity_mask.height) * 0.01 * delta;
+        this.potential_mask.height = (1 - this.potential) * (H - F(700) - 2);
 
         this.wikipedia_y = (this.wikipedia_y - delta * R2 * (0.01 + 0.19 * Math.pow(this.intensity, 4))) % (this.wikipedia.height + F(100));
         this.wikipedia.y = this.wikipedia_y - F(5) + (95);
-
-        // TODO: 4d rotations
 
         this.three.r_zw += 1 * 0.00005 * delta;
         this.three.r_xy += 1.02 * 0.00005 * delta;
@@ -603,7 +614,7 @@ class Play extends Phaser.Scene {
             let [v, id] = this.moves[0].simplex[i];
             this.three.vert_vec4s[id].fromArray(v);
             this.three.vert_vec4s[id].applyMatrix4(this.three.r1);
-            v_smooth(this.three.vertices[id].position, this.three.vert_vec4s[id], delta * 0.01);
+            v_smooth(this.three.vertices[id].position, this.three.vert_vec4s[id], delta * 0.005);
         }
 
         this.three.bounding_box.setFromObject(this.three.vertex_group);
@@ -649,7 +660,9 @@ class Play extends Phaser.Scene {
         this.three.tets[4].matrix.setPosition(this.three.vertices[0].position);
         this.three.renderer.render(this.three.scene, this.three.camera);
         //console.log(this.three.vertices);
-
+        for (let i = 0; i < 4; i++) {
+            this.receptors[i].setScale(this.receptors[i].scale + 0.01 * delta * (1 - this.receptors[i].scale));
+        }
 
         debug.push(this.three.bounding_sphere.radius);
         this.tmp.setText(debug);
