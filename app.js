@@ -34,6 +34,8 @@ Many variations exist depending on the actual nature of the problem being solved
 
 const loader = new GLTFLoader();
 const gltf = await new Promise((resolve, reject) => loader.load('tet.glb', data => resolve(data), null, reject));
+const cos = Math.cos;
+const sin = Math.sin;
 
 function balanced_ternary(x, precision) {
     var x = Math.floor(x * Math.pow(3, precision));
@@ -270,12 +272,6 @@ function v_smooth(src, target, delta) {
         src.z + (target.z - src.z) * delta);
 }
 
-function v_smooth_arr(src, target, delta) {
-    src.set(src.x + (target[0] - src.x) * delta,
-        src.y + (target[1] - src.y) * delta,
-        src.z + (target[2] - src.z) * delta);
-}
-
 function s_smooth(src, target, delta) {
     src.setScalar(src.x + (target - src.x) * delta);
 }
@@ -321,7 +317,7 @@ class Play extends Phaser.Scene {
         for (let i = 1; i <= 3; i++) {
             this.add.line(0, 0, F(50 + 80 * i) - 0.5, F(100) - 0.5, F(50 + 80 * i) - 0.5, H - F(100) - 0.5).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0, 0);
         }
-        this.add.text(F(35), H - F(100), 'INTENSITY', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1).setAngle(-90);
+        this.add.text(F(385), H - F(98), 'POTENTIAL', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(1, 1).setAngle(90);
         this.add.rectangle(F(377) - 0.5, F(600) - 0.5, F(8), H - F(700)).setStrokeStyle(1, 0xf23af2).setOrigin(0);
         this.add.text(F(390), F(10), 'OBJECTIVE FUNCTION', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(F(390), F(80), 'TRANSFORMS', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
@@ -394,7 +390,7 @@ class Play extends Phaser.Scene {
             ease: 'Sine.easeOut',
         });*/
 
-        this.tmp = this.add.text(F(500), F(500), 'test');
+        this.tmp = this.add.text(F(1000), F(500), 'test');
         [this.moves, this.gen] = init_moves(f, [-0.5, -1, -2, -2]);
         let keycodes = [Phaser.Input.Keyboard.KeyCodes.Z, Phaser.Input.Keyboard.KeyCodes.X, Phaser.Input.Keyboard.KeyCodes.C, Phaser.Input.Keyboard.KeyCodes.V];
         for (let i = 0; i < keycodes.length; i++) {
@@ -403,19 +399,20 @@ class Play extends Phaser.Scene {
             }, this);
         }
 
+        this.add.text(F(35), H - F(100), 'INTENSITY', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1).setAngle(-90);
         this.intensity = 0;
         this.add.rectangle(F(35), F(100), F(9), H - F(200), 0xf23af2).setOrigin(0);
         this.intensity_mask = this.add.rectangle(F(35) + 1, F(100) + 1, F(9) - 2, H - F(200) - 2, 0x000000).setOrigin(0);
         this.polytope_canvas = document.createElement('canvas');
         document.body.appendChild(this.polytope_canvas);
         this.polytope_canvas.style.position = "absolute";
-        this.polytope_canvas.style.top = `120px`;
+        this.polytope_canvas.style.top = `150px`;
         this.polytope_canvas.style.left = `312px`;
         this.polytope_canvas.width = 480;
         this.polytope_canvas.height = 480;
 
 
-        this.add.text(F(390), F(150), 'POLYTOPE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
+        this.add.text(F(390), F(180), 'POLYTOPE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.three = {};
         this.three.renderer = new THREE.WebGLRenderer({ alpha: true, canvas: this.polytope_canvas });
         this.three.renderer.setSize(this.polytope_canvas.width, this.polytope_canvas.height);
@@ -456,7 +453,6 @@ class Play extends Phaser.Scene {
         this.three.sphere_debug_geom = new THREE.SphereGeometry(1, 16, 8);
         this.three.sphere_debug = new THREE.LineSegments(this.three.sphere_debug_geom, new THREE.LineBasicMaterial({ transparent: true, opacity: 0.2 }));
         this.three.scene.add(this.three.sphere_debug);
-        this.field_graphics = this.add.graphics();
 
         this.three.line_geom = new THREE.CylinderGeometry(0.01, 0.01, 1);
         this.three.line_geom.applyMatrix4(new THREE.Matrix4().makeTranslation(0, 0.5, 0));
@@ -474,6 +470,7 @@ class Play extends Phaser.Scene {
         }
 
         this.three.tets = [];
+        this.three.tet_p = [];
         let tet_geom = gltf.scene.children[0].geometry;
         tet_geom.applyMatrix4(new THREE.Matrix4().makeScale(1, -1, -1));
 
@@ -485,13 +482,35 @@ class Play extends Phaser.Scene {
             tet.matrixAutoUpdate = false;
             this.three.tets.push(tet);
             this.three.scene.add(tet);
+            this.three.tet_p.push(new THREE.Vector4());
         }
+
+        this.three.r_zw = 0;
+        this.three.r_xy = 0;
+        this.three.r_yw = 0;
+        this.three.r_zx = 0;
+        this.three.r_zy = 0;
+        this.three.r_xy = 0;
+        this.three.r1 = new THREE.Matrix4();
+        this.three.r2 = new THREE.Matrix4();
+        this.three.r3 = new THREE.Matrix4();
+        this.three.r4 = new THREE.Matrix4();
+        this.three.vert_vec4s = [];
+        for (let i = 0; i < N + 1; i++) {
+            this.three.vert_vec4s.push(new THREE.Vector4());
+        }
+
+        this.field_graphics = this.add.graphics();
         let field_mask_shape = this.make.graphics();
         field_mask_shape.fillStyle(0xffffff);
         field_mask_shape.beginPath();
         field_mask_shape.fillRect(F(50) - 0.5 + 1, F(100) - 0.5 + 1, F(320) - 2, H - F(200) - 2);
         let field_mask = field_mask_shape.createGeometryMask();
         this.field_graphics.setMask(field_mask);
+
+        this.misc_graphics = this.add.graphics();
+
+        this.score = 0;
     }
 
     update(time, delta) {
@@ -529,6 +548,11 @@ class Play extends Phaser.Scene {
                 }
             }
         }
+        this.misc_graphics.clear();
+        this.misc_graphics.lineStyle(2, 0xdddd00);
+        this.misc_graphics.lineBetween(F(450), H - F(20), W - F(50), H - F(20));
+        // TODO: draw number line, transforms
+
         if (!this.climax) {
             this.intensity = Math.max(this.intensity - 0.00003 * this.intensity * delta, 0);
         }
@@ -539,22 +563,62 @@ class Play extends Phaser.Scene {
         this.wikipedia.y = this.wikipedia_y - F(5) + (95);
 
         // TODO: 4d rotations
+
+        this.three.r_zw += 1 * 0.00005 * delta;
+        this.three.r_xy += 1.02 * 0.00005 * delta;
+        this.three.r_yw += 1.04 * 0.00005 * delta;
+        this.three.r_zx += 1.06 * 0.00005 * delta;
+        this.three.r_zy += 1.08 * 0.00005 * delta;
+        this.three.r_xy += 1.1 * 0.00005 * delta;
+
+        this.three.r1.set(
+            cos(this.three.r_xy), -sin(this.three.r_xy), 0, 0,
+            sin(this.three.r_xy), cos(this.three.r_xy), 0, 0,
+            0, 0, cos(this.three.r_zw), -sin(this.three.r_zw),
+            0, 0, sin(this.three.r_zw), cos(this.three.r_zw)
+        );
+        this.three.r2.set(
+            cos(this.three.r_zx), 0, sin(this.three.r_zx), 0,
+            0, cos(this.three.r_yw), 0, -sin(this.three.r_yw),
+            -sin(this.three.r_zx), 0, cos(this.three.r_zx), 0,
+            0, sin(this.three.r_yw), 0, cos(this.three.r_yw),
+        );
+        this.three.r3.set(
+            1, 0, 0, 0,
+            0, cos(this.three.r_zy), sin(this.three.r_zy), 0,
+            0, -sin(this.three.r_zy), cos(this.three.r_zy), 0,
+            0, 0, 0, 1,
+        );
+        this.three.r4.set(
+            cos(this.three.r_xy), -sin(this.three.r_xy), 0, 0,
+            sin(this.three.r_xy), cos(this.three.r_xy), 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1,
+        );
+        this.three.r1.multiply(this.three.r2);
+        this.three.r1.multiply(this.three.r3);
+        this.three.r1.multiply(this.three.r4);
+        // NOTE: no idea if matrices need to be transposed or order of mult needs to be reversed...
         for (let i = 0; i < N + 1; i++) {
-            let v = this.moves[0].simplex[i];
-            v_smooth_arr(this.three.vertices[v[1]].position, v[0], delta * 0.01);
+            let [v, id] = this.moves[0].simplex[i];
+            this.three.vert_vec4s[id].fromArray(v);
+            this.three.vert_vec4s[id].applyMatrix4(this.three.r1);
+            v_smooth(this.three.vertices[id].position, this.three.vert_vec4s[id], delta * 0.01);
         }
+
         this.three.bounding_box.setFromObject(this.three.vertex_group);
         this.three.bounding_box.getBoundingSphere(this.three.bounding_sphere);
-        //console.log(this.three.bounding_sphere);
-        v_smooth(this.three.camera_pos, this.three.bounding_sphere.center, delta * 0.005);
-        this.three.camera.position.copy(this.three.camera_pos);
+        //v_smooth(this.three.camera_pos, this.three.bounding_sphere.center, delta * 0.005);
+        //this.three.camera.position.copy(this.three.camera_pos);
+        this.three.camera.position.copy(this.three.bounding_sphere.center);
         this.three.camera.rotation.y += 0.0003 * delta;
         this.three.camera.position.x += 2 * this.three.bounding_sphere.radius * Math.sin(this.three.camera.rotation.y);
         this.three.camera.position.z += 2 * this.three.bounding_sphere.radius * Math.cos(this.three.camera.rotation.y);
         this.three.camera.far = this.three.bounding_sphere.radius * 10;
         this.three.camera.near = this.three.bounding_sphere.radius / 10;
         this.three.camera.updateProjectionMatrix();
-        v_smooth(this.three.sphere_debug.position, this.three.bounding_sphere.center, delta * 0.01);
+        //v_smooth(this.three.sphere_debug.position, this.three.bounding_sphere.center, delta * 0.01);
+        this.three.sphere_debug.position.copy(this.three.bounding_sphere.center);
         this.three.sphere_debug.scale.setScalar(this.three.bounding_sphere.radius);
         for (let i = 0; i < N + 1; i++) {
             this.three.vertices[i].scale.setScalar(this.three.bounding_sphere.radius);
