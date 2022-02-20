@@ -36,6 +36,13 @@ const loader = new GLTFLoader();
 const gltf = await new Promise((resolve, reject) => loader.load('tet.glb', data => resolve(data), null, reject));
 const cos = Math.cos;
 const sin = Math.sin;
+const words = [
+    ['expand', 'stretch', 'larger', 'inflate', 'extend', 'bigger', 'fill', 'grow', 'reach', 'further', 'more'],
+    ['reflect', 'turn over', 'other side', 'flip', 'over', 'under', 'through', 'above', 'below'],
+    ['contract', 'squeeze', 'squish', 'shrink', 'smaller', 'deflate', 'hug', 'closer', 'compress'],
+]
+words[3] = words[2];
+const NUM_TEXT_PARTICLES = 50;
 
 function balanced_ternary(x, precision) {
     var x = Math.floor(x * Math.pow(3, precision));
@@ -291,11 +298,27 @@ class Play extends Phaser.Scene {
                 this.flashes[x].setScale(1);
                 this.flashes[x].setAlpha(1);
             }
+            let wordlist = words[this.moves[0].move];
+            this.text_particles[this.text_particle_index].setAlpha(1).setScale(1).setText(wordlist[Math.floor(Math.random() * wordlist.length)]);
+            this.tweens.add({
+                targets: this.text_particles[this.text_particle_index],
+                scale: 0.25,
+                duration: 2000,
+                ease: 'Quad.easeOut',
+            });
+            this.tweens.add({
+                targets: this.text_particles[this.text_particle_index],
+                alpha: 0,
+                duration: 2000,
+                ease: 'Expo.easeOut',
+            });
+            this.text_particle_index = (this.text_particle_index + 1) % NUM_TEXT_PARTICLES;
+
             if (this.climax) {
-                this.freestyle_score += 500;
-                this.score += 500;
+                this.freestyle_score += 100;
+                this.score += 100;
             } else {
-                let points = Math.floor(6969 * (1 + 4 * this.intensity) * Math.pow(this.potential, 2) * this.moves[0].mult);
+                let points = Math.floor(69 * (1 + 8 * Math.pow(this.intensity, 2)) * Math.pow(this.potential, 2) * this.moves[0].mult);
                 this.score += points;
             }
             for (let i = 0; i < N + 1; i++) {
@@ -411,6 +434,10 @@ class Play extends Phaser.Scene {
         // TODO: remove this
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M).on('down', function (key, event) {
             this.process_move(-1);
+        }, this);
+        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P).on('down', function (key, event) {
+            this.intensity = 1;
+            this.climax = true;
         }, this);
 
         this.add.text(F(35), H - F(100), 'INTENSITY', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1).setAngle(-90);
@@ -536,6 +563,12 @@ class Play extends Phaser.Scene {
         this.score = 0;
         this.score_draw = 0;
         this.freestyle_score = 0;
+
+        this.text_particle_index = 0;
+        this.text_particles = [];
+        for (let i = 0; i < NUM_TEXT_PARTICLES; i++) {
+            this.text_particles.push(this.add.text(W / 2, H / 2, 'TEXT', { font: `${192 * FS}pt Covenant`, fill: '#ff9cf340', stroke: '#ff9cf3', strokeThickness: 4 }).setOrigin(0.5).setAlpha(0))
+        }
     }
 
     update(time, delta) {
