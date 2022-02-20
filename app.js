@@ -38,11 +38,11 @@ const cos = Math.cos;
 const sin = Math.sin;
 const words = [
     ['expand', 'stretch', 'larger', 'inflate', 'extend', 'bigger', 'fill', 'grow', 'reach', 'further', 'more'],
-    ['reflect', 'turn over', 'other side', 'flip', 'over', 'under', 'through', 'above', 'below'],
+    ['reflect', 'turn over', 'other side', 'flip', 'go over', 'go under', 'go through', 'go above', 'go below'],
     ['contract', 'squeeze', 'squish', 'shrink', 'smaller', 'deflate', 'hug', 'closer', 'compress'],
 ]
 words[3] = words[2];
-const NUM_TEXT_PARTICLES = 50;
+const NUM_TEXT_PARTICLES = 10;
 
 function balanced_ternary(x, precision) {
     var x = Math.floor(x * Math.pow(3, precision));
@@ -230,19 +230,6 @@ function* next_states(f, simplex) {
     }
 }
 
-/*
-state : {
-    simplex (before move)
-    move
-    mult
-    f_simplex
-    fr
-    fe
-    foc
-    fic
-}
-*/
-
 function init_moves(f, x0_init) {
     let best_score = 1;
     let best_moves = [];
@@ -299,19 +286,29 @@ class Play extends Phaser.Scene {
                 this.flashes[x].setAlpha(1);
             }
             let wordlist = words[this.moves[0].move];
-            this.text_particles[this.text_particle_index].setAlpha(1).setScale(1).setText(wordlist[Math.floor(Math.random() * wordlist.length)]);
-            this.tweens.add({
+            let old_word = this.text_particles[this.text_particle_index];
+            let new_word = old_word;
+            while (old_word == new_word) {
+                new_word = wordlist[Math.floor(Math.random() * wordlist.length)];
+            }
+            if (this.text_particles[this.text_particle_index].tweens) {
+                this.text_particles[this.text_particle_index].tweens[0].remove();
+                this.text_particles[this.text_particle_index].tweens[1].remove();
+            }
+            this.text_particles[this.text_particle_index].setAlpha(1).setScale(1).setText(new_word);
+            this.text_particles[this.text_particle_index].tweens = [this.tweens.add({
                 targets: this.text_particles[this.text_particle_index],
                 scale: 0.25,
-                duration: 2000,
+                duration: 2000 / (1 + 3 * this.intensity),
                 ease: 'Quad.easeOut',
-            });
+            }),
             this.tweens.add({
                 targets: this.text_particles[this.text_particle_index],
                 alpha: 0,
-                duration: 2000,
+                duration: 2000 / (1 + 2 * this.intensity),
                 ease: 'Expo.easeOut',
-            });
+            })];
+
             this.text_particle_index = (this.text_particle_index + 1) % NUM_TEXT_PARTICLES;
 
             if (this.climax) {
@@ -587,19 +584,104 @@ class Play extends Phaser.Scene {
             this.field_graphics.lineStyle(2, 0x000000);
             this.field_graphics.fillRoundedRect(x - F(35), y - F(35), F(70), F(70), F(10));
             this.field_graphics.strokeRoundedRect(x - F(35), y - F(35), F(70), F(70), F(10));
+            this.field_graphics.lineStyle(2, 0xffffff, 0.5);
+            this.field_graphics.fillStyle(0xffffff, 0.5);
+            switch (m) {
+                case 0:
+                    this.field_graphics.beginPath();
+                    this.field_graphics.moveTo(x + 5 * R2, y + 8 * R2);
+                    this.field_graphics.lineTo(x + 15 * R2, y + 8 * R2);
+                    this.field_graphics.lineTo(x + 15 * R2, y + 15 * R2);
+                    this.field_graphics.lineTo(x + 30 * R2, y);
+                    this.field_graphics.lineTo(x + 15 * R2, y + -15 * R2);
+                    this.field_graphics.lineTo(x + 15 * R2, y + -8 * R2);
+                    this.field_graphics.lineTo(x + 5 * R2, y + -8 * R2);
+                    this.field_graphics.closePath();
+                    this.field_graphics.fillPath();
+                    this.field_graphics.beginPath();
+                    this.field_graphics.moveTo(x - 5 * R2, y + 8 * R2);
+                    this.field_graphics.lineTo(x - 15 * R2, y + 8 * R2);
+                    this.field_graphics.lineTo(x - 15 * R2, y + 15 * R2);
+                    this.field_graphics.lineTo(x - 30 * R2, y);
+                    this.field_graphics.lineTo(x - 15 * R2, y + -15 * R2);
+                    this.field_graphics.lineTo(x - 15 * R2, y + -8 * R2);
+                    this.field_graphics.lineTo(x - 5 * R2, y + -8 * R2);
+                    this.field_graphics.closePath();
+                    this.field_graphics.fillPath();
+                    break;
+                case 1:
+                    this.field_graphics.lineBetween(x, y + 20 * R2, x, y - 20 * R2);
+                    this.field_graphics.fillTriangle(x + 7 * R2, y, x + 25 * R2, y + 12 * R2, x + 25 * R2, y - 12 * R2);
+                    this.field_graphics.fillTriangle(x - 7 * R2, y, x - 25 * R2, y + 12 * R2, x - 25 * R2, y - 12 * R2);
+                    break;
+                case 2:
+                    this.field_graphics.beginPath();
+                    this.field_graphics.moveTo(x + (-30 + 2) * R2, y - 8 * R2);
+                    this.field_graphics.lineTo(x + (-20 + 2) * R2, y - 8 * R2);
+                    this.field_graphics.lineTo(x + (-20 + 2) * R2, y - 15 * R2);
+                    this.field_graphics.lineTo(x + (-5 + 2) * R2, y);
+                    this.field_graphics.lineTo(x + (-20 + 2) * R2, y + 15 * R2);
+                    this.field_graphics.lineTo(x + (-20 + 2) * R2, y + 8 * R2);
+                    this.field_graphics.lineTo(x + (-30 + 2) * R2, y + 8 * R2);
+                    this.field_graphics.closePath();
+                    this.field_graphics.fillPath();
+                    this.field_graphics.beginPath();
+                    this.field_graphics.moveTo(x - (-30 + 2) * R2, y - 8 * R2);
+                    this.field_graphics.lineTo(x - (-20 + 2) * R2, y - 8 * R2);
+                    this.field_graphics.lineTo(x - (-20 + 2) * R2, y - 15 * R2);
+                    this.field_graphics.lineTo(x - (-5 + 2) * R2, y);
+                    this.field_graphics.lineTo(x - (-20 + 2) * R2, y + 15 * R2);
+                    this.field_graphics.lineTo(x - (-20 + 2) * R2, y + 8 * R2);
+                    this.field_graphics.lineTo(x - (-30 + 2) * R2, y + 8 * R2);
+                    this.field_graphics.closePath();
+                    this.field_graphics.fillPath();
+                    break;
+                case 3:
+                    for (let [xm, ym] of [[1, 1], [1, -1], [-1, -1], [-1, 1]]) {
+                        xm *= R2;
+                        ym *= R2;
+                        this.field_graphics.beginPath();
+                        this.field_graphics.moveTo(x + 3 * xm, y + 3 * ym);
+                        this.field_graphics.lineTo(x + 20 * xm, y + 3 * ym);
+                        this.field_graphics.lineTo(x + 14 * xm, y + 8 * ym);
+                        this.field_graphics.lineTo(x + 26 * xm, y + 20 * ym);
+                        this.field_graphics.lineTo(x + 20 * xm, y + 26 * ym);
+                        this.field_graphics.lineTo(x + 8 * xm, y + 14 * ym);
+                        this.field_graphics.lineTo(x + 3 * xm, y + 20 * ym);
+                        this.field_graphics.closePath();
+                        this.field_graphics.fillPath();
+                    }
+                    break;
+            }
 
-            this.field_graphics.lineStyle(3, 0xeeee00);
+
             if (this.moves[i].mult > 1) {
-                this.field_graphics.lineBetween(x - F(30), y, x + F(30), y);
                 let digits = balanced_ternary(this.moves[i].mult, 0);
                 let start = -7.5 * (digits.length - 1);
+                this.field_graphics.lineStyle(5, 0xcccc00);
+                this.field_graphics.lineBetween(x - F(30) - 1, y, x + F(30) + 1, y);
+                for (let j = 0; j < digits.length; j++) {
+                    switch (digits[j]) {
+                        case -1:
+                            this.field_graphics.lineBetween(x + F(start + 15 * j), y, x + F(start + 15 * j), y + F(20) + 1);
+                            break;
+                        case 0:
+                            this.field_graphics.strokeCircle(x + F(start + 15 * j), y, F(6));
+                            break;
+                        case 1:
+                            this.field_graphics.lineBetween(x + F(start + 15 * j), y, x + F(start + 15 * j), y - F(20) - 1);
+                            break;
+                    }
+                }
+                this.field_graphics.lineStyle(3, 0xeeee00);
+                this.field_graphics.lineBetween(x - F(30), y, x + F(30), y);
                 for (let j = 0; j < digits.length; j++) {
                     switch (digits[j]) {
                         case -1:
                             this.field_graphics.lineBetween(x + F(start + 15 * j), y, x + F(start + 15 * j), y + F(20));
                             break;
                         case 0:
-                            this.field_graphics.strokeCircle(x + F(start + 15 * j), y, F(5));
+                            this.field_graphics.strokeCircle(x + F(start + 15 * j), y, F(6));
                             break;
                         case 1:
                             this.field_graphics.lineBetween(x + F(start + 15 * j), y, x + F(start + 15 * j), y - F(20));
