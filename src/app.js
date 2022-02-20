@@ -299,13 +299,13 @@ class Play extends Phaser.Scene {
             this.text_particles[this.text_particle_index].tweens = [this.tweens.add({
                 targets: this.text_particles[this.text_particle_index],
                 scale: 0.25,
-                duration: 2000 / (1 + 3 * this.intensity),
+                duration: 2000 / (1 + this.intensity),
                 ease: 'Quad.easeOut',
             }),
             this.tweens.add({
                 targets: this.text_particles[this.text_particle_index],
                 alpha: 0,
-                duration: 2000 / (1 + 2 * this.intensity),
+                duration: 2000 / (1 + this.intensity),
                 ease: 'Expo.easeOut',
             })];
 
@@ -432,10 +432,14 @@ class Play extends Phaser.Scene {
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M).on('down', function (key, event) {
             this.process_move(-1);
         }, this);
+        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L).on('down', function (key, event) {
+            this.intensity = 0.9;
+        }, this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P).on('down', function (key, event) {
             this.intensity = 1;
             this.climax = true;
         }, this);
+        // end remove this
 
         this.add.text(F(35), H - F(100), 'INTENSITY', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1).setAngle(-90);
         this.intensity = 0;
@@ -653,7 +657,6 @@ class Play extends Phaser.Scene {
                     }
                     break;
             }
-
 
             if (this.moves[i].mult > 1) {
                 let digits = balanced_ternary(this.moves[i].mult, 0);
