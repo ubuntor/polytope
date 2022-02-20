@@ -42,7 +42,7 @@ const words = [
     ['contract', 'squeeze', 'squish', 'shrink', 'smaller', 'deflate', 'hug', 'closer', 'compress'],
 ]
 words[3] = words[2];
-const NUM_TEXT_PARTICLES = 10;
+const NUM_TEXT_PARTICLES = 50;
 
 function balanced_ternary(x, precision) {
     var x = Math.floor(x * Math.pow(3, precision));
@@ -62,8 +62,8 @@ function balanced_ternary(x, precision) {
 
 function f(a) {
     let [x, y, z, w] = a;
-    // McCormick + Styblinski-Tang: (-0.547, -1.547, -2.904, -2.904)
-    return (0.0001 * (Math.random() * 2 - 1)) + (Math.sin(x + y) + (x - y) ** 2 - 1.5 * x + 2.5 * y + 1) + ((z ** 4 - 16 * z ** 2 + 5 * z + w ** 4 - 16 * w ** 2 + 5 * w) / 2);
+    // -McCormick - Styblinski-Tang: (-0.547, -1.547, -2.904, -2.904)
+    return (0.0001 * (Math.random() * 2 - 1)) - (Math.sin(x + y) + (x - y) ** 2 - 1.5 * x + 2.5 * y + 1) - ((z ** 4 - 16 * z ** 2 + 5 * z + w ** 4 - 16 * w ** 2 + 5 * w) / 2);
 }
 
 function vec_add(a, b) {
@@ -104,7 +104,7 @@ function next_state(f, simplex_orig) {
         simplex[i][0] = vec_nudge(simplex[i][0]);
         f_simplex[simplex[i][1]] = f(simplex[i][0]);
     }
-    simplex.sort((a, b) => f_simplex[a[1]] - f_simplex[b[1]]);
+    simplex.sort((a, b) => f_simplex[b[1]] - f_simplex[a[1]]);
     let xc = Array(N).fill(0);
     for (let i = 0; i < N; i++) {
         xc = vec_add(xc, simplex[i][0]);
@@ -125,13 +125,13 @@ function next_state(f, simplex_orig) {
     let foc = f(xoc);
     let xic = vec_sub(xc, scal_mul(GAMMA, vec_sub(xr, xc)))
     let fic = f(xic)
-    if (f1 <= fr && fr < fn) {
+    if (f1 > fr && fr >= fn) {
         //console.log(".R.. reflect");
         move = 1;
         simplex_replace(simplex, xr);
         changed[idn1] = true;
-    } else if (fr < f1) {
-        if (fe < fr) {
+    } else if (fr >= f1) {
+        if (fe >= fr) {
             //console.log("E... expand");
             move = 0;
             simplex_replace(simplex, xe);
@@ -142,8 +142,8 @@ function next_state(f, simplex_orig) {
             simplex_replace(simplex, xr);
             changed[idn1] = true;
         }
-    } else if (fn <= fr && fr < fn1) {
-        if (foc <= fr) {
+    } else if (fn > fr && fr >= fn1) {
+        if (foc > fr) {
             //console.log("..C. contract (outside)");
             move = 2;
             simplex_replace(simplex, xoc);
@@ -157,8 +157,8 @@ function next_state(f, simplex_orig) {
                 changed[simplex[i][1]] = true;
             }
         }
-    } else { // fr >= fn1
-        if (fic < fn1) {
+    } else { // fr < fn1
+        if (fic >= fn1) {
             //console.log("..C. contract (inside)")
             move = 2;
             simplex_replace(simplex, xic);
@@ -296,6 +296,9 @@ class Play extends Phaser.Scene {
                 this.text_particles[this.text_particle_index].tweens[1].remove();
             }
             this.text_particles[this.text_particle_index].setAlpha(1).setScale(1).setText(new_word);
+            if (this.climax) {
+                this.text_particles[this.text_particle_index].setPosition(W / 2 + Phaser.Math.FloatBetween(-300, 300), H / 2 + Phaser.Math.FloatBetween(-400, 400));
+            }
             this.text_particles[this.text_particle_index].tweens = [this.tweens.add({
                 targets: this.text_particles[this.text_particle_index],
                 scale: 0.25,
