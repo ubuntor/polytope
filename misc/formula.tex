@@ -1,0 +1,18 @@
+\documentclass[]{article}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{microtype}
+\usepackage[margin=0cm]{geometry}
+\let\originalleft\left
+\let\originalright\right
+\renewcommand{\left}{\mathopen{}\mathclose\bgroup\originalleft}
+\renewcommand{\right}{\aftergroup\egroup\originalright}
+\allowdisplaybreaks
+\begin{document}
+\[
+f(x,y,z,w) = -\underbrace{\left(\sin(x+y) + (x-y)^2 - 1.5x+2.5y+1\right)}_{\text{McCormick}}-\underbrace{\left(\frac{z^4 - 16z^2 + 5z + w^4 - 16w + 5w}{2}\right)}_\text{Styblinski–Tang}+\:\varepsilon \quad (\varepsilon \sim U(-0.0001,0.0001))
+\]
+
+\end{document}

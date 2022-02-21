@@ -76,7 +76,7 @@ const cos = Math.cos;
 const sin = Math.sin;
 const words = [
     ['expand', 'stretch', 'larger', 'inflate', 'extend', 'bigger', 'fill', 'grow', 'reach', 'further', 'more'],
-    ['reflect', 'turn over', 'other side', 'flip', 'go over', 'go under', 'go through', 'go above', 'go below'],
+    ['reflect', 'turn over', 'turn around', 'other side', 'flip', 'go over', 'go under', 'go through', 'go above', 'go below'],
     ['contract', 'squeeze', 'squish', 'shrink', 'smaller', 'deflate', 'hug', 'closer', 'compress'],
 ]
 words[3] = words[2];
@@ -543,18 +543,6 @@ class Play extends Phaser.Scene {
         this.wikipedia_y = 0;
         this.wikipedia.setMask(mask);
 
-        /*
-        this.cameras.main.zoom = 1.01;
-        this.tweens.add({
-            targets: this.cameras.main,
-            zoom: 1,
-            loop: -1,
-            duration: 500,
-            ease: 'Sine.easeOut',
-        });*/
-
-        this.tmp = this.add.text(F(1000), F(500), ''); // TODO remove
-
         this.add.text(W - F(250), F(190), 'ALGORITHM', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1);
         // pixel fonts + devicePixelRatio nonsense = :(
         let codelines = CODE.split('\n');
@@ -734,7 +722,7 @@ class Play extends Phaser.Scene {
             this.add.text(F(690), H - F(60), 'fic', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5)
         ];
         this.f_misc_draw = Array(4).fill(0);
-        this.warning = this.add.text(F(50), H - F(400), 'WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  ', { font: `${60 * FS}pt m3x6`, fill: '#ffb300' }).setAlpha(0);
+        this.warning = this.add.text(F(50), H - F(400), 'WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  ', { font: `${60 * FS}pt m3x6`, fill: '#ffffff' }).setAlpha(0);
         this.warning.setMask(field_mask);
         this.warning_offset = 0;
         this.is_warning = false;
@@ -747,10 +735,22 @@ class Play extends Phaser.Scene {
     update(time, delta) {
         if (!this.climax && !this.is_warning && this.intensity > 0.9) {
             this.is_warning = true;
+            this.cameras.main.zoom = 1.03;
+            this.camera_thump = this.tweens.add({
+                targets: this.cameras.main,
+                zoom: 1,
+                loop: -1,
+                duration: 500,
+                ease: 'Sine.easeOut',
+            });
             this.warning.setAlpha(1);
         }
         if (this.is_warning && this.intensity < 0.85) {
             this.is_warning = false;
+            this.cameras.main.zoom = 1;
+            if (this.camera_thump) {
+                this.camera_thump.remove();
+            }
             this.warning.setAlpha(0);
         }
         if (this.is_warning) {
@@ -759,17 +759,15 @@ class Play extends Phaser.Scene {
                 this.warning_offset += this.warning.displayWidth / 3;
             }
             this.warning.setX(F(50) + this.warning_offset);
-            this.warning.setFill(`rgb(255, ${Math.max(0, Math.min(255, Math.floor(255 * (0.95 - this.intensity) / 0.1)))}, 0)`);
+            this.warning.setTint(0xff0000 + 0x000100 * Math.max(0, Math.min(255, Math.floor(255 * (0.95 - this.intensity) / 0.1))));
         }
 
         this.background_ctx.fillRect(0, 0, 960, 720);
         this.potential = Math.min(this.potential + 0.001 * delta * (1 + 150 * Math.pow(this.intensity, 3)), 1);
         this.field_graphics.clear();
-        let debug = [this.intensity, this.potential, this.score];
         this.field_graphics.lineStyle(3, 0xdddd00);
         for (let i = 0; i < VISIBLE_MOVES; i++) {
             let m = this.moves[i].move;
-            debug.push(`${'ZXCV'[m]} ${this.moves[i].mult}`);
             this.field_graphics.fillStyle([0xbb0000, 0x00bb00, 0x00bbbb, 0x0000dd][m]);
             let x = F(90 + 80 * m) - 0.5;
             let y = H - F(140 + (i + 1 - this.potential) * 90) - 0.5;
@@ -1184,15 +1182,11 @@ class Play extends Phaser.Scene {
         this.three.tets[4].matrix.makeBasis(this.three.line_vecs[0 * (N + 1) + 1], this.three.line_vecs[0 * (N + 1) + 2], this.three.line_vecs[0 * (N + 1) + 3]);
         this.three.tets[4].matrix.setPosition(this.three.vertices[0].position);
         this.three.renderer.render(this.three.scene, this.three.camera);
-        //console.log(this.three.vertices);
         for (let i = 0; i < 4; i++) {
             this.receptors[i].setScale(this.receptors[i].scale + 0.01 * delta * (1 - this.receptors[i].scale));
             this.flashes[i].setScale(this.flashes[i].scale + 0.01 * delta * (1.5 - this.flashes[i].scale));
             this.flashes[i].setAlpha(this.flashes[i].alpha + 0.01 * delta * (0 - this.flashes[i].alpha));
         }
-
-        debug.push(this.three.bounding_sphere.radius);
-        //this.tmp.setText(debug);
     }
 }
 
