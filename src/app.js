@@ -329,31 +329,17 @@ class Play extends Phaser.Scene {
         if (prev_value === undefined) {
             prev_value = 255;
         }
-        if (is_green) {
-            line.tween = this.tweens.addCounter({
-                from: prev_value,
-                to: 0,
-                duration: 500,
-                ease: 'Expo.easeOut',
-                onUpdate: function (tween) {
-                    let value = Math.floor(tween.getValue());
-                    line.setColor(`rgb(${value}, 255, ${value})`);
-                    line.color_val = value;
-                }
-            });
-        } else {
-            line.tween = this.tweens.addCounter({
-                from: prev_value,
-                to: 255,
-                duration: 500,
-                ease: 'Expo.easeOut',
-                onUpdate: function (tween) {
-                    let value = Math.floor(tween.getValue());
-                    line.setColor(`rgb(${value}, 255, ${value})`);
-                    line.color_val = value;
-                }
-            });
-        }
+        line.tween = this.tweens.addCounter({
+            from: prev_value,
+            to: is_green ? 0 : 255,
+            duration: 500,
+            ease: 'Expo.easeOut',
+            onUpdate: function (tween) {
+                let value = Math.floor(tween.getValue());
+                line.setTint(0x00ff00 + 0x010001 * value);
+                line.color_val = value;
+            }
+        });
     }
 
     color_code_lines() {
