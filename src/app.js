@@ -31,7 +31,45 @@ The downhill simplex method now takes a series of steps, most steps just moving 
 Unlike modern optimization methods, the Nelder-Mead heuristic can converge to a non-stationary point, unless the problem satisfies stronger conditions than are necessary for modern methods. Modern improvements over the Nelder-Mead heuristic have been known since 1979.
 
 Many variations exist depending on the actual nature of the problem being solved. A common variant uses a constant-size, small simplex that roughly follows the gradient direction (which gives steepest descent). Visualize a small triangle on an elevation map flip-flopping its way down a valley to a local bottom. This method is also known as the flexible polyhedron method. This, however, tends to perform poorly against the method described in this article because it makes small, unnecessary steps in areas of little interest.`
-
+const CODE = `n = 4
+ALPHA = 1
+BETA = 1+2/n
+GAMMA = 0.75-1/2n
+DELTA = 1-1/n
+while true:
+  sort xs: f(x1) >= ... >= f(x5)
+  define fi = f(xi)
+  xc = (x1+...+x5)/5
+  xr = xc+ALPHA*(xc-x5)
+  xe = xc+BETA*(xr-xc)
+  xic = xc-GAMMA*(xr-xc)
+  xoc = xc+GAMMA*(xr-xc)
+  if f1 > fr >= f4:
+    // REFLECT
+    x5 = xr
+  elif fr >= f1:
+    if fe >= fr:
+      // EXPAND
+      x5 = xe
+    else:
+      // REFLECT
+      x5 = xr
+  elif f4 > fr >= f5:
+    if foc > fr:
+      // CONTRACT (OUTSIDE)
+      x5 = xoc
+    else:
+      // SHRINK
+      for 2 <= i <= 5:
+        xi = x1+DELTA*(xi-x1)
+  else:
+    if fic >= fr:
+      // CONTRACT (INSIDE)
+      x5 = xic
+    else:
+      // SHRINK
+      for 2 <= i <= 5:
+        xi = x1+DELTA*(xi-x1)`
 const loader = new GLTFLoader();
 const gltf = await new Promise((resolve, reject) => loader.load('tet.glb', data => resolve(data), null, reject));
 const cos = Math.cos;
@@ -281,6 +319,100 @@ class Play extends Phaser.Scene {
         this.load.plugin('rexroundrectangleplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/8b4ad8083e48019f39b37d8f629379851ca8ec13/dist/rexroundrectangleplugin.min.js', true);
     }
 
+    set_code_color(i, is_green) {
+        let line = this.code[i];
+        if (line.tween) {
+            line.tween.remove();
+        }
+        //console.log(line)
+        let prev_value = line.color_val;
+        if (prev_value === undefined) {
+            prev_value = 255;
+        }
+        if (is_green) {
+            line.tween = this.tweens.addCounter({
+                from: prev_value,
+                to: 0,
+                duration: 500,
+                ease: 'Expo.easeOut',
+                onUpdate: function (tween) {
+                    let value = Math.floor(tween.getValue());
+                    line.setColor(`rgb(${value}, 255, ${value})`);
+                    line.color_val = value;
+                }
+            });
+        } else {
+            line.tween = this.tweens.addCounter({
+                from: prev_value,
+                to: 255,
+                duration: 500,
+                ease: 'Expo.easeOut',
+                onUpdate: function (tween) {
+                    let value = Math.floor(tween.getValue());
+                    line.setColor(`rgb(${value}, 255, ${value})`);
+                    line.color_val = value;
+                }
+            });
+        }
+    }
+
+    color_code_lines() {
+        for (let i = 13; i <= 38; i++) {
+            this.set_code_color(i, false);
+        }
+        let move = this.moves[0];
+        let f1 = move.f_simplex[0];
+        let f4 = move.f_simplex[3];
+        let f5 = move.f_simplex[4];
+        let fr = move.fr;
+        let fe = move.fe;
+        let foc = move.foc;
+        let fic = move.fic;
+        if (f1 > fr && fr >= f4) {
+            this.set_code_color(13, true);
+            this.set_code_color(14, true);
+            this.set_code_color(15, true);
+        } else if (fr >= f1) {
+            if (fe >= fr) {
+                this.set_code_color(16, true);
+                this.set_code_color(17, true);
+                this.set_code_color(18, true);
+                this.set_code_color(19, true);
+            } else {
+                this.set_code_color(16, true);
+                this.set_code_color(20, true);
+                this.set_code_color(21, true);
+                this.set_code_color(22, true);
+            }
+        } else if (f4 > fr && fr >= f5) {
+            if (foc > fr) {
+                this.set_code_color(23, true);
+                this.set_code_color(24, true);
+                this.set_code_color(25, true);
+                this.set_code_color(26, true);
+            } else {
+                this.set_code_color(23, true);
+                this.set_code_color(27, true);
+                this.set_code_color(28, true);
+                this.set_code_color(29, true);
+                this.set_code_color(30, true);
+            }
+        } else {
+            if (fic >= fr) {
+                this.set_code_color(31, true);
+                this.set_code_color(32, true);
+                this.set_code_color(33, true);
+                this.set_code_color(34, true);
+            } else {
+                this.set_code_color(31, true);
+                this.set_code_color(35, true);
+                this.set_code_color(36, true);
+                this.set_code_color(37, true);
+                this.set_code_color(38, true);
+            }
+        }
+    }
+
     process_move(x) {
         if (x != -1) {
             this.receptors[x].setScale(0.8);
@@ -348,6 +480,7 @@ class Play extends Phaser.Scene {
                 }
             }
             this.potential = 0;
+            this.color_code_lines();
         } else {
             if (!this.climax) {
                 this.intensity = Math.max(this.intensity - 0.015, 0);
@@ -356,6 +489,8 @@ class Play extends Phaser.Scene {
     }
 
     create() {
+        [this.moves, this.gen] = init_moves(f, [-0.5, -1, -2, -2]);
+
         this.background_canvas = document.createElement('canvas');
         document.body.appendChild(this.background_canvas);
         this.background_canvas.style.position = "absolute";
@@ -373,7 +508,6 @@ class Play extends Phaser.Scene {
         }
         this.add.text(F(390), F(10), 'OBJECTIVE FUNCTION', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(F(390), F(80), 'TRANSFORMS', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
-        this.add.text(W - F(200), F(150), 'ALGORITHM', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(W - F(200), H - F(60), 'SCORE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(F(90), H - F(88), 'EXPAND', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
         this.add.text(F(170), H - F(88), 'REFLECT', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
@@ -419,7 +553,7 @@ class Play extends Phaser.Scene {
         let mask = mask_shape.createGeometryMask();
         this.wikipedia = this.make.text({
             x: F(55), y: F(-5), text: WIKIPEDIA, style: { font: `${24 * FS}pt m3x6`, fill: 'white', lineSpacing: R2 * -15, wordWrap: { width: F(320) } }
-        })
+        });
         this.wikipedia_y = 0;
         this.wikipedia.setMask(mask);
 
@@ -433,8 +567,21 @@ class Play extends Phaser.Scene {
             ease: 'Sine.easeOut',
         });*/
 
-        this.tmp = this.add.text(F(1000), F(500), 'test');
-        [this.moves, this.gen] = init_moves(f, [-0.5, -1, -2, -2]);
+        this.tmp = this.add.text(F(1000), F(500), ''); // TODO remove
+
+        this.add.text(W - F(250), F(190), 'ALGORITHM', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1);
+        // pixel fonts + devicePixelRatio nonsense = :(
+        let codelines = CODE.split('\n');
+        this.code = [];
+        for (let i = 0; i < codelines.length; i++) {
+            this.code.push(this.make.text({ x: F(950), y: F(180 + i * 16), text: codelines[i], style: { font: `${48 * FS}pt m3x6`, fill: 'white' } }));
+        }
+        let codescale = F(248) / this.code[6].displayWidth;
+        for (let i = 0; i < codelines.length; i++) {
+            this.code[i].setScale(codescale);
+        }
+        this.color_code_lines();
+
         let keycodes = [Phaser.Input.Keyboard.KeyCodes.Z, Phaser.Input.Keyboard.KeyCodes.X, Phaser.Input.Keyboard.KeyCodes.C, Phaser.Input.Keyboard.KeyCodes.V];
         for (let i = 0; i < keycodes.length; i++) {
             this.input.keyboard.addKey(keycodes[i]).on('down', function (key, event) {
@@ -605,7 +752,7 @@ class Play extends Phaser.Scene {
         this.warning.setMask(field_mask);
         this.warning_offset = 0;
         this.is_warning = false;
-        this.add.text(F(480), H - F(25), 'f5-f1:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
+        this.add.text(F(480), H - F(25), 'f1-f5:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
         this.add.text(F(720), H - F(25), '\u00b5:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
         this.range_draw = 0;
         this.mean_draw = 0;
@@ -790,21 +937,40 @@ class Play extends Phaser.Scene {
                 this.misc_graphics.fillTriangle(x, y, x + 6 * R2, y - 12 * R2, x - 6 * R2, y - 12 * R2);
             }
             let fs = [this.moves[0].fr, this.moves[0].fe, this.moves[0].foc, this.moves[0].fic];
+            let num_left = 0;
+            let num_right = 0;
+            let cur_left = 0;
+            let cur_right = 0;
             for (let i = 0; i < 4; i++) {
                 let target = (fs[i] - fn1) / (f1 - fn1);
                 this.f_misc_draw[i] += 0.01 * delta * (target - this.f_misc_draw[i]);
+                if (this.f_misc_draw[i] < 0) {
+                    num_left++;
+                }
+                if (this.f_misc_draw[i] > 1) {
+                    num_right++;
+                }
+            }
+            if (num_left > 0) {
+                this.misc_graphics.fillTriangle(xlo - (6 + 20) * R2, y + 6 * R2, xlo - (18 + 20) * R2, y, xlo - (6 + 20) * R2, y - 6 * R2);
+            }
+            if (num_right > 0) {
+                this.misc_graphics.fillTriangle(xhi + (6 + 20) * R2, y + 6 * R2, xhi + (18 + 20) * R2, y, xhi + (6 + 20) * R2, y - 6 * R2);
+            }
+            for (let i = 0; i < 4; i++) {
                 if (0 <= this.f_misc_draw[i] && this.f_misc_draw[i] <= 1) {
                     let x = xlo + (xhi - xlo) * this.f_misc_draw[i];
                     this.f_misc[i].setPosition(x, y + F(24));
                     this.misc_graphics.fillTriangle(x, y, x + 6 * R2, y + 12 * R2, x - 6 * R2, y + 12 * R2);
                 } else if (this.f_misc_draw[i] < 0) {
-                    this.f_misc[i].setPosition(xlo - F(15), y - F(5));
-                    this.misc_graphics.fillTriangle(xlo - (6 + 20) * R2, y + 6 * R2, xlo - (18 + 20) * R2, y, xlo - (6 + 20) * R2, y - 6 * R2);
+                    this.f_misc[i].setPosition(xlo - F(15), y - F(5 - 15 * (cur_left - num_left / 2 + 0.5)));
+                    cur_left++;
                 } else {
-                    this.f_misc[i].setPosition(xhi + F(15), y - F(5));
-                    this.misc_graphics.fillTriangle(xhi + (6 + 20) * R2, y + 6 * R2, xhi + (18 + 20) * R2, y, xhi + (6 + 20) * R2, y - 6 * R2);
+                    this.f_misc[i].setPosition(xhi + F(15), y - F(5 - 15 * (cur_right - num_right / 2 + 0.5)));
+                    cur_right++;
                 }
             }
+
             this.misc_graphics.lineBetween(xlo, y, xhi, y);
             {
                 let x = xlo;
@@ -1040,7 +1206,7 @@ class Play extends Phaser.Scene {
         }
 
         debug.push(this.three.bounding_sphere.radius);
-        this.tmp.setText(debug);
+        //this.tmp.setText(debug);
     }
 }
 
