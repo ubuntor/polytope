@@ -48,7 +48,7 @@ function balanced_ternary(x, precision) {
     var x = Math.floor(x * Math.pow(3, precision));
     let digits = [];
     let i = 0;
-    while (x > 0) {
+    while (x > 0 || i < precision) {
         let digit = [0, 1, -1][x % 3];
         digits.push(digit);
         x -= digit;
@@ -601,33 +601,37 @@ class Play extends Phaser.Scene {
             this.add.text(F(690), H - F(60), 'fic', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5)
         ];
         this.f_misc_draw = Array(4).fill(0);
-
-
-        this.warning = this.add.text(F(50), H - F(400), 'WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  ', { font: `${60 * FS}pt m3x6`, fill: '#eeeeee' }).setAlpha(0);
+        this.warning = this.add.text(F(50), H - F(400), 'WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  ', { font: `${60 * FS}pt m3x6`, fill: '#ffb300' }).setAlpha(0);
         this.warning.setMask(field_mask);
         this.warning_offset = 0;
         this.is_warning = false;
+        this.add.text(F(480), H - F(25), 'f5-f1:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
+        this.add.text(F(720), H - F(25), '\u00b5:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
+        this.range_draw = 0;
+        this.mean_draw = 0;
     }
 
     update(time, delta) {
-        if (!this.climax && !this.is_warning && this.intensity > 0.95) {
+        if (!this.climax && !this.is_warning && this.intensity > 0.9) {
             this.is_warning = true;
             this.warning.setAlpha(1);
         }
-        if (this.is_warning && this.intensity < 0.9) {
+        if (this.is_warning && this.intensity < 0.85) {
             this.is_warning = false;
             this.warning.setAlpha(0);
         }
-        this.warning_offset -= 0.2 * delta;
-        if (this.warning_offset < -this.warning.displayWidth / 3) {
-            this.warning_offset += this.warning.displayWidth / 3;
+        if (this.is_warning) {
+            this.warning_offset -= 2 * delta * (this.intensity - 0.8);
+            if (this.warning_offset < -this.warning.displayWidth / 3) {
+                this.warning_offset += this.warning.displayWidth / 3;
+            }
+            this.warning.setX(F(50) + this.warning_offset);
+            this.warning.setFill(`rgb(255, ${Math.max(0, Math.min(255, Math.floor(255 * (0.95 - this.intensity) / 0.1)))}, 0)`);
         }
-        this.warning.setX(F(50) + this.warning_offset);
 
         this.background_ctx.fillRect(0, 0, 960, 720);
         this.potential = Math.min(this.potential + 0.001 * delta * (1 + 150 * Math.pow(this.intensity, 3)), 1);
         this.field_graphics.clear();
-        //console.log(this.moves);
         let debug = [this.intensity, this.potential, this.score];
         this.field_graphics.lineStyle(3, 0xdddd00);
         for (let i = 0; i < VISIBLE_MOVES; i++) {
@@ -865,13 +869,75 @@ class Play extends Phaser.Scene {
                 }
             }
         }
+        this.range_draw += 0.01 * delta * ((this.moves[0].f_simplex[0] - this.moves[0].f_simplex[N]) - this.range_draw);
+        {
+            let xlo = F(490);
+            let xhi = F(690);
+            let y = H - F(18) - 0.5;
+            this.misc_graphics.lineBetween(xlo, y, xhi, y);
+            let digits = balanced_ternary(this.range_draw, 14);
+            let width = 10;
+            let start = -width * (digits.length - 9);
+            for (let j = 0; j < digits.length; j++) {
+                let cur_x = (xlo + xhi) / 2 + F(start + width * j);
+                switch (digits[j]) {
+                    case -1:
+                        this.misc_graphics.lineBetween(cur_x, y, cur_x, y + F(10));
+                        break;
+                    case 0:
+                        this.misc_graphics.strokeCircle(cur_x, y, F(3));
+                        break;
+                    case 1:
+                        this.misc_graphics.lineBetween(cur_x, y, cur_x, y - F(10));
+                        break;
+                    case 2:
+                        this.misc_graphics.beginPath();
+                        this.misc_graphics.moveTo(cur_x - F(3), y);
+                        this.misc_graphics.lineTo(cur_x, y - F(3));
+                        this.misc_graphics.lineTo(cur_x + F(3), y);
+                        this.misc_graphics.lineTo(cur_x, y + F(3));
+                        this.misc_graphics.closePath();
+                        this.misc_graphics.fillPath();
+                        break;
 
-        /*  fr,
-                fe,
-                foc,
-                fic,*/
+                }
+            }
+        }
+        this.mean_draw += 0.01 * delta * (this.moves[0].f_simplex.reduce((a, b) => a + b, 0) / (N + 1) - this.mean_draw);
+        {
+            let xlo = F(730);
+            let xhi = F(930);
+            let y = H - F(18) - 0.5;
+            this.misc_graphics.lineBetween(xlo, y, xhi, y);
+            let digits = balanced_ternary(this.mean_draw, 13);
+            let width = 10;
+            let start = -width * (digits.length - 10);
+            for (let j = 0; j < digits.length; j++) {
+                let cur_x = (xlo + xhi) / 2 + F(start + width * j);
+                switch (digits[j]) {
+                    case -1:
+                        this.misc_graphics.lineBetween(cur_x, y, cur_x, y + F(10));
+                        break;
+                    case 0:
+                        this.misc_graphics.strokeCircle(cur_x, y, F(3));
+                        break;
+                    case 1:
+                        this.misc_graphics.lineBetween(cur_x, y, cur_x, y - F(10));
+                        break;
+                    case 2:
+                        this.misc_graphics.beginPath();
+                        this.misc_graphics.moveTo(cur_x - F(3), y);
+                        this.misc_graphics.lineTo(cur_x, y - F(3));
+                        this.misc_graphics.lineTo(cur_x + F(3), y);
+                        this.misc_graphics.lineTo(cur_x, y + F(3));
+                        this.misc_graphics.closePath();
+                        this.misc_graphics.fillPath();
+                        break;
+                }
+            }
+        }
 
-        // TODO: draw number line, transforms
+        // TODO: draw transforms
 
         if (!this.climax) {
             this.intensity = Math.max(this.intensity - 0.00003 * this.intensity * delta, 0);
