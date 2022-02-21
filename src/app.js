@@ -107,7 +107,7 @@ function f(a) {
     let [x, y, z, w] = a;
     // -McCormick - Styblinski-Tang: (-0.547, -1.547, -2.904, -2.904)
     // + gaussian noise: mean 0, stdev 0.0001
-    return (0.0001 * (Math.sqrt(-2.0 * Math.log(Math.random())) * Math.cos(2.0 * Math.PI * Math.random()))) - (Math.sin(x + y) + (x - y) ** 2 - 1.5 * x + 2.5 * y + 1) - ((z ** 4 - 16 * z ** 2 + 5 * z + w ** 4 - 16 * w ** 2 + 5 * w) / 2);
+    return (0.0001 * (Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random()))) - (Math.sin(x + y) + (x - y) ** 2 - 1.5 * x + 2.5 * y + 1) - ((z ** 4 - 16 * z ** 2 + 5 * z + w ** 4 - 16 * w ** 2 + 5 * w) / 2);
 }
 
 function vec_add(a, b) {
