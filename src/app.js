@@ -47,11 +47,16 @@ const NUM_TEXT_PARTICLES = 50;
 function balanced_ternary(x, precision) {
     var x = Math.floor(x * Math.pow(3, precision));
     let digits = [];
+    let i = 0;
     while (x > 0) {
         let digit = [0, 1, -1][x % 3];
         digits.push(digit);
         x -= digit;
         x /= 3;
+        i++;
+        if (i == precision) {
+            digits.push(2);
+        }
     }
     if (digits.length == 0) {
         return [0];
@@ -173,6 +178,7 @@ function next_state(f, simplex_orig) {
             }
         }
     }
+    f_simplex.sort((a, b) => b - a);
     let state = {
         simplex: simplex_orig,
         move,
@@ -286,11 +292,13 @@ class Play extends Phaser.Scene {
                 this.flashes[x].setAlpha(1);
             }
             let wordlist = words[this.moves[0].move];
-            let old_word = this.text_particles[this.text_particle_index];
+
+            let old_word = this.old_word;
             let new_word = old_word;
             while (old_word == new_word) {
                 new_word = wordlist[Math.floor(Math.random() * wordlist.length)];
             }
+            this.old_word = new_word;
             if (this.text_particles[this.text_particle_index].tweens) {
                 this.text_particles[this.text_particle_index].tweens[0].remove();
                 this.text_particles[this.text_particle_index].tweens[1].remove();
@@ -334,6 +342,8 @@ class Play extends Phaser.Scene {
                 this.intensity += 0.01 * this.potential;
                 if (this.intensity > 1) {
                     this.climax = true;
+                    this.is_warning = false;
+                    this.warning.setAlpha(0);
                     this.intensity = 1;
                 }
             }
@@ -364,7 +374,7 @@ class Play extends Phaser.Scene {
         this.add.text(F(390), F(10), 'OBJECTIVE FUNCTION', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(F(390), F(80), 'TRANSFORMS', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(W - F(200), F(150), 'ALGORITHM', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
-        this.add.text((F(400) + W) / 2, H - F(45), 'SCORE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0.5);
+        this.add.text(W - F(200), H - F(60), 'SCORE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(F(90), H - F(88), 'EXPAND', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
         this.add.text(F(170), H - F(88), 'REFLECT', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
         this.add.text(F(250), H - F(88), 'CONTRACT', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
@@ -479,7 +489,7 @@ class Play extends Phaser.Scene {
         this.three.scene.add(light2);
 
         const light3 = new THREE.PointLight(0xffffff, 1, 0);
-        light3.position.set(- 100, - 200, - 100);
+        light3.position.set(-100, -200, -100);
         this.three.scene.add(light3);
         this.three.camera.position.z = 5;
 
@@ -573,9 +583,47 @@ class Play extends Phaser.Scene {
         for (let i = 0; i < NUM_TEXT_PARTICLES; i++) {
             this.text_particles.push(this.add.text(W / 2, H / 2, 'TEXT', { font: `${192 * FS}pt Covenant`, fill: '#ff9cf340', stroke: '#ff9cf3', strokeThickness: 4 }).setOrigin(0.5).setAlpha(0))
         }
+
+        this.f1_draw = 0;
+        this.fn1_draw = 0;
+        this.add.text(F(960), H - F(160), 'f1', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
+        this.f_mids = [
+            this.add.text(F(825), H - F(115), 'f2', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5),
+            this.add.text(F(690), H - F(115), 'f3', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5),
+            this.add.text(F(555), H - F(115), 'f4', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5)
+        ];
+        this.f_mids_draw = Array(N - 1).fill(0);
+        this.add.text(F(420), H - F(160), 'f5', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
+        this.f_misc = [
+            this.add.text(F(690), H - F(60), 'fr', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5),
+            this.add.text(F(690), H - F(60), 'fe', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5),
+            this.add.text(F(690), H - F(60), 'foc', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5),
+            this.add.text(F(690), H - F(60), 'fic', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5)
+        ];
+        this.f_misc_draw = Array(4).fill(0);
+
+
+        this.warning = this.add.text(F(50), H - F(400), 'WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  ', { font: `${60 * FS}pt m3x6`, fill: '#eeeeee' }).setAlpha(0);
+        this.warning.setMask(field_mask);
+        this.warning_offset = 0;
+        this.is_warning = false;
     }
 
     update(time, delta) {
+        if (!this.climax && !this.is_warning && this.intensity > 0.95) {
+            this.is_warning = true;
+            this.warning.setAlpha(1);
+        }
+        if (this.is_warning && this.intensity < 0.9) {
+            this.is_warning = false;
+            this.warning.setAlpha(0);
+        }
+        this.warning_offset -= 0.2 * delta;
+        if (this.warning_offset < -this.warning.displayWidth / 3) {
+            this.warning_offset += this.warning.displayWidth / 3;
+        }
+        this.warning.setX(F(50) + this.warning_offset);
+
         this.background_ctx.fillRect(0, 0, 960, 720);
         this.potential = Math.min(this.potential + 0.001 * delta * (1 + 150 * Math.pow(this.intensity, 3)), 1);
         this.field_graphics.clear();
@@ -700,25 +748,129 @@ class Play extends Phaser.Scene {
         this.misc_graphics.clear();
         this.misc_graphics.lineStyle(2, 0xdddd00);
         {
-            let x = (F(400) + W) / 2;
+            let x = W - F(100);
             let y = H - F(20);
             let digits = balanced_ternary(this.score_draw, 0);
-            let start = -7.5 * (digits.length - 1);
-            this.misc_graphics.lineBetween(x - F(digits.length * 7.5 + 7.5), y, x + F(digits.length * 7.5 + 7.5), y);
+            let width = 15;
+            let start = -width / 2 * (digits.length - 1);
+            this.misc_graphics.lineBetween(x - F(digits.length * width / 2 + width / 2), y, x + F(digits.length * width / 2 + width / 2), y);
             for (let j = 0; j < digits.length; j++) {
                 switch (digits[j]) {
                     case -1:
-                        this.misc_graphics.lineBetween(x + F(start + 15 * j), y, x + F(start + 15 * j), y + F(15));
+                        this.misc_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y + F(15));
                         break;
                     case 0:
-                        this.misc_graphics.strokeCircle(x + F(start + 15 * j), y, F(5));
+                        this.misc_graphics.strokeCircle(x + F(start + width * j), y, F(5));
                         break;
                     case 1:
-                        this.misc_graphics.lineBetween(x + F(start + 15 * j), y, x + F(start + 15 * j), y - F(15));
+                        this.misc_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y - F(15));
                         break;
                 }
             }
         }
+        this.misc_graphics.lineStyle(1, 0xf23af2);
+        this.misc_graphics.fillStyle(0xf23af2);
+        {
+            let xlo = F(420);
+            let xhi = F(960);
+            let y = H - F(80) - 0.5;
+            let f1 = this.moves[0].f_simplex[0];
+            let fn1 = this.moves[0].f_simplex[N];
+            this.f1_draw += 0.01 * delta * (f1 - this.f1_draw);
+            this.fn1_draw += 0.01 * delta * (fn1 - this.fn1_draw);
+            for (let i = 1; i < N; i++) {
+                let target = (this.moves[0].f_simplex[i] - fn1) / (f1 - fn1);
+                this.f_mids_draw[i - 1] += 0.01 * delta * (target - this.f_mids_draw[i - 1]);
+                let x = xlo + (xhi - xlo) * this.f_mids_draw[i - 1];
+                this.f_mids[i - 1].setX(x);
+                this.misc_graphics.fillTriangle(x, y, x + 6 * R2, y - 12 * R2, x - 6 * R2, y - 12 * R2);
+            }
+            let fs = [this.moves[0].fr, this.moves[0].fe, this.moves[0].foc, this.moves[0].fic];
+            for (let i = 0; i < 4; i++) {
+                let target = (fs[i] - fn1) / (f1 - fn1);
+                this.f_misc_draw[i] += 0.01 * delta * (target - this.f_misc_draw[i]);
+                if (0 <= this.f_misc_draw[i] && this.f_misc_draw[i] <= 1) {
+                    let x = xlo + (xhi - xlo) * this.f_misc_draw[i];
+                    this.f_misc[i].setPosition(x, y + F(24));
+                    this.misc_graphics.fillTriangle(x, y, x + 6 * R2, y + 12 * R2, x - 6 * R2, y + 12 * R2);
+                } else if (this.f_misc_draw[i] < 0) {
+                    this.f_misc[i].setPosition(xlo - F(15), y - F(5));
+                    this.misc_graphics.fillTriangle(xlo - (6 + 20) * R2, y + 6 * R2, xlo - (18 + 20) * R2, y, xlo - (6 + 20) * R2, y - 6 * R2);
+                } else {
+                    this.f_misc[i].setPosition(xhi + F(15), y - F(5));
+                    this.misc_graphics.fillTriangle(xhi + (6 + 20) * R2, y + 6 * R2, xhi + (18 + 20) * R2, y, xhi + (6 + 20) * R2, y - 6 * R2);
+                }
+            }
+            this.misc_graphics.lineBetween(xlo, y, xhi, y);
+            {
+                let x = xlo;
+                let digits = balanced_ternary(this.f1_draw, 5);
+                let width = -10;
+                let start = -width * (digits.length - 6);
+                this.misc_graphics.lineBetween(x, y - F(digits.length * width / 2 + width / 2), x, y + F(digits.length * width / 2 + width / 2));
+                for (let j = 0; j < digits.length; j++) {
+                    let cur_y = y + F(start + width * j);
+                    switch (digits[j]) {
+                        case -1:
+                            this.misc_graphics.lineBetween(x, cur_y, x + F(10), cur_y);
+                            break;
+                        case 0:
+                            this.misc_graphics.strokeCircle(x, cur_y, F(3));
+                            break;
+                        case 1:
+                            this.misc_graphics.lineBetween(x, cur_y, x - F(10), cur_y);
+                            break;
+                        case 2:
+                            this.misc_graphics.beginPath();
+                            this.misc_graphics.moveTo(x - F(3), cur_y);
+                            this.misc_graphics.lineTo(x, cur_y - F(3));
+                            this.misc_graphics.lineTo(x + F(3), cur_y);
+                            this.misc_graphics.lineTo(x, cur_y + F(3));
+                            this.misc_graphics.closePath();
+                            this.misc_graphics.fillPath();
+                            break;
+
+                    }
+                }
+            }
+            {
+                let x = xhi;
+                let digits = balanced_ternary(this.fn1_draw, 5);
+                let width = 10;
+                let start = -width * (digits.length - 6);
+                this.misc_graphics.lineBetween(x, y - F(digits.length * width / 2 + width / 2), x, y + F(digits.length * width / 2 + width / 2));
+                for (let j = 0; j < digits.length; j++) {
+                    let cur_y = y + F(start + width * j);
+                    switch (digits[j]) {
+                        case -1:
+                            this.misc_graphics.lineBetween(x, cur_y, x - F(10), cur_y);
+                            break;
+                        case 0:
+                            this.misc_graphics.strokeCircle(x, cur_y, F(3));
+                            break;
+                        case 1:
+                            this.misc_graphics.lineBetween(x, cur_y, x + F(10), cur_y);
+                            break;
+                        case 2:
+                            this.misc_graphics.beginPath();
+                            this.misc_graphics.moveTo(x - F(3), cur_y);
+                            this.misc_graphics.lineTo(x, cur_y - F(3));
+                            this.misc_graphics.lineTo(x + F(3), cur_y);
+                            this.misc_graphics.lineTo(x, cur_y + F(3));
+                            this.misc_graphics.closePath();
+                            this.misc_graphics.fillPath();
+                            break;
+
+                    }
+                }
+            }
+        }
+
+        /*  fr,
+                fe,
+                foc,
+                fic,*/
+
         // TODO: draw number line, transforms
 
         if (!this.climax) {
