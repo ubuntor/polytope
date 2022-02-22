@@ -494,7 +494,7 @@ class Play extends Phaser.Scene {
             this.add.line(0, 0, F(50 + 80 * i) - 0.5, F(100) - 0.5, F(50 + 80 * i) - 0.5, H - F(100) - 0.5).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0, 0);
         }
         this.add.text(F(390), F(10), 'OBJECTIVE FUNCTION', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
-        this.add.text(F(390), F(80), 'TRANSFORMS', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
+        this.add.text(F(390), F(75), 'TRANSFORMS', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(W - F(200), H - F(60), 'SCORE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(F(90), H - F(88), 'EXPAND', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
         this.add.text(F(170), H - F(88), 'REFLECT', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
@@ -586,7 +586,7 @@ class Play extends Phaser.Scene {
         this.add.rectangle(F(377), F(600), F(8), H - F(700), 0xf23af2).setOrigin(0);
         this.potential_mask = this.add.rectangle(F(377) + 1, F(600) + 1, F(8) - 2, 0, 0x000000).setOrigin(0);
 
-        this.add.text(F(390), F(180), 'POLYTOPE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
+        this.add.text(F(390), F(185), 'POLYTOPE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.polytope_canvas = document.createElement('canvas');
         document.body.appendChild(this.polytope_canvas);
         this.polytope_canvas.style.position = "absolute";
@@ -671,7 +671,7 @@ class Play extends Phaser.Scene {
         this.three.r_yw = 0;
         this.three.r_zx = 0;
         this.three.r_zy = 0;
-        this.three.r_xy = 0;
+        this.three.r_xy2 = 0;
         this.three.r1 = new THREE.Matrix4();
         this.three.r2 = new THREE.Matrix4();
         this.three.r3 = new THREE.Matrix4();
@@ -731,6 +731,86 @@ class Play extends Phaser.Scene {
         this.add.text(F(720), H - F(25), '\u00b5:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
         this.range_draw = 0;
         this.mean_draw = 0;
+
+
+        {
+            let offset = 15;
+            this.add.polygon(0, 0, [
+                F(395 + offset) - 0.5, F(102) - 0.5,
+                F(390 + offset) - 0.5, F(102) - 0.5,
+                F(390 + offset) - 0.5, F(177) - 0.5,
+                F(395 + offset) - 0.5, F(177) - 0.5
+            ]).setStrokeStyle(1, 0xf23af2).setOrigin(0).setClosePath(false);
+            this.add.polygon(0, 0, [
+                F(462 + offset), F(102) - 0.5,
+                F(467 + offset), F(102) - 0.5,
+                F(467 + offset), F(177) - 0.5,
+                F(462 + offset), F(177) - 0.5
+            ]).setStrokeStyle(1, 0xf23af2).setOrigin(0).setClosePath(false);
+            this.rot4_rects = [];
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    let rect = this.add.rectangle(F(390 + offset + 6 + 17 * i), F(100 + 7 + 17 * j), F(13), F(13), 0xffffff).setOrigin(0);
+                    this.rot4_rects.push(rect);
+                }
+            }
+            this.add.text(F(390 + offset), F(139), '4D rotate', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5, 1).setAngle(-90);
+
+            const height = 15;
+            this.add.text(F(500 + offset), F(95), 'zw:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
+            this.add.text(F(500 + offset), F(95 + 1 * height), 'xy:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
+            this.add.text(F(500 + offset), F(95 + 2 * height), 'yw:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
+            this.add.text(F(500 + offset), F(95 + 3 * height), 'zx:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
+            this.add.text(F(500 + offset), F(95 + 4 * height), 'zy:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
+            this.add.text(F(500 + offset), F(95 + 5 * height), 'xy2:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
+        }
+
+        {
+            let offset = 350;
+            this.add.polygon(0, 0, [
+                F(395 + offset) - 0.5, F(102) - 0.5,
+                F(390 + offset) - 0.5, F(102) - 0.5,
+                F(390 + offset) - 0.5, F(177) - 0.5,
+                F(395 + offset) - 0.5, F(177) - 0.5
+            ]).setStrokeStyle(1, 0xf23af2).setOrigin(0).setClosePath(false);
+            this.add.polygon(0, 0, [
+                F(462 + offset), F(102) - 0.5,
+                F(467 + offset), F(102) - 0.5,
+                F(467 + offset), F(177) - 0.5,
+                F(462 + offset), F(177) - 0.5
+            ]).setStrokeStyle(1, 0xf23af2).setOrigin(0).setClosePath(false);
+            this.world_rects = [];
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    let rect = this.add.rectangle(F(390 + offset + 6 + 17 * i), F(100 + 7 + 17 * j), F(13), F(13), 0xffffff).setOrigin(0);
+                    this.world_rects.push(rect);
+                }
+            }
+            this.add.text(F(390 + offset), F(139), '3D world inv', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5, 1).setAngle(-90);
+        }
+        {
+            let offset = 470;
+            this.add.polygon(0, 0, [
+                F(395 + offset) - 0.5, F(102) - 0.5,
+                F(390 + offset) - 0.5, F(102) - 0.5,
+                F(390 + offset) - 0.5, F(177) - 0.5,
+                F(395 + offset) - 0.5, F(177) - 0.5
+            ]).setStrokeStyle(1, 0xf23af2).setOrigin(0).setClosePath(false);
+            this.add.polygon(0, 0, [
+                F(462 + offset), F(102) - 0.5,
+                F(467 + offset), F(102) - 0.5,
+                F(467 + offset), F(177) - 0.5,
+                F(462 + offset), F(177) - 0.5
+            ]).setStrokeStyle(1, 0xf23af2).setOrigin(0).setClosePath(false);
+            this.proj_rects = [];
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    let rect = this.add.rectangle(F(390 + offset + 6 + 17 * i), F(100 + 7 + 17 * j), F(13), F(13), 0xffffff).setOrigin(0);
+                    this.proj_rects.push(rect);
+                }
+            }
+            this.add.text(F(390 + offset - 2), F(139), '3D proj', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5, 1).setAngle(-90);
+        }
     }
 
     update(time, delta) {
@@ -984,7 +1064,6 @@ class Play extends Phaser.Scene {
                             this.misc_graphics.closePath();
                             this.misc_graphics.fillPath();
                             break;
-
                     }
                 }
             }
@@ -1088,8 +1167,6 @@ class Play extends Phaser.Scene {
             }
         }
 
-        // TODO: draw transforms
-
         if (!this.climax) {
             this.intensity = Math.max(this.intensity - 0.00003 * this.intensity * delta, 0);
         }
@@ -1100,12 +1177,30 @@ class Play extends Phaser.Scene {
         this.wikipedia_y = (this.wikipedia_y - delta * R2 * (0.01 + 0.19 * Math.pow(this.intensity, 4))) % (this.wikipedia.height + F(100));
         this.wikipedia.y = this.wikipedia_y - F(5) + (95);
 
-        this.three.r_zw += 1 * 0.00005 * delta * (1 + 3 * this.intensity);
-        this.three.r_xy += 1.02 * 0.00005 * delta * (1 + 3 * this.intensity);
-        this.three.r_yw += 1.04 * 0.00005 * delta * (1 + 3 * this.intensity);
-        this.three.r_zx += 1.06 * 0.00005 * delta * (1 + 3 * this.intensity);
-        this.three.r_zy += 1.08 * 0.00005 * delta * (1 + 3 * this.intensity);
-        this.three.r_xy += 1.1 * 0.00005 * delta * (1 + 3 * this.intensity);
+        this.three.r_zw += 1.13 * 0.00005 * delta * (1 + 4 * this.intensity);
+        this.three.r_xy += 1.11 * 0.00005 * delta * (1 + 4 * this.intensity);
+        this.three.r_yw += 1.07 * 0.00005 * delta * (1 + 4 * this.intensity);
+        this.three.r_zx += 1.05 * 0.00005 * delta * (1 + 4 * this.intensity);
+        this.three.r_zy += 1.03 * 0.00005 * delta * (1 + 4 * this.intensity);
+        this.three.r_xy2 += 1.02 * 0.00005 * delta * (1 + 4 * this.intensity);
+        if (this.three.r_zw > 2 * Math.PI) {
+            this.three.r_zw -= 2 * Math.PI;
+        }
+        if (this.three.r_xy > 2 * Math.PI) {
+            this.three.r_xy -= 2 * Math.PI;
+        }
+        if (this.three.r_yw > 2 * Math.PI) {
+            this.three.r_yw -= 2 * Math.PI;
+        }
+        if (this.three.r_zx > 2 * Math.PI) {
+            this.three.r_zx -= 2 * Math.PI;
+        }
+        if (this.three.r_zy > 2 * Math.PI) {
+            this.three.r_zy -= 2 * Math.PI;
+        }
+        if (this.three.r_xy2 > 2 * Math.PI) {
+            this.three.r_xy2 -= 2 * Math.PI;
+        }
 
         this.three.r1.set(
             cos(this.three.r_xy), -sin(this.three.r_xy), 0, 0,
@@ -1126,8 +1221,8 @@ class Play extends Phaser.Scene {
             0, 0, 0, 1,
         );
         this.three.r4.set(
-            cos(this.three.r_xy), -sin(this.three.r_xy), 0, 0,
-            sin(this.three.r_xy), cos(this.three.r_xy), 0, 0,
+            cos(this.three.r_xy2), -sin(this.three.r_xy2), 0, 0,
+            sin(this.three.r_xy2), cos(this.three.r_xy2), 0, 0,
             0, 0, 1, 0,
             0, 0, 0, 1,
         );
@@ -1135,13 +1230,53 @@ class Play extends Phaser.Scene {
         this.three.r1.multiply(this.three.r3);
         this.three.r1.multiply(this.three.r4);
         // NOTE: no idea if matrices need to be transposed or order of mult needs to be reversed...
+        {
+            let values = [
+                this.three.r_zw,
+                this.three.r_xy,
+                this.three.r_yw,
+                this.three.r_zx,
+                this.three.r_zy,
+                this.three.r_xy2];
+            let xlo = F(500 + 15);
+            let xhi = F(680 + 15);
+            for (let i = 0; i < 6; i++) {
+                let y = F(103 + 15 * i) - 0.5;
+                this.misc_graphics.lineBetween(xlo, y, xhi, y);
+                let digits = balanced_ternary(values[i], 13);
+                let width = 10;
+                let start = -width * (digits.length - 9);
+                for (let j = 0; j < digits.length; j++) {
+                    let cur_x = (xlo + xhi) / 2 + F(start + width * j);
+                    switch (digits[j]) {
+                        case -1:
+                            this.misc_graphics.lineBetween(cur_x, y, cur_x, y + F(7));
+                            break;
+                        case 0:
+                            this.misc_graphics.strokeCircle(cur_x, y, F(3));
+                            break;
+                        case 1:
+                            this.misc_graphics.lineBetween(cur_x, y, cur_x, y - F(7));
+                            break;
+                        case 2:
+                            this.misc_graphics.beginPath();
+                            this.misc_graphics.moveTo(cur_x - F(3), y);
+                            this.misc_graphics.lineTo(cur_x, y - F(3));
+                            this.misc_graphics.lineTo(cur_x + F(3), y);
+                            this.misc_graphics.lineTo(cur_x, y + F(3));
+                            this.misc_graphics.closePath();
+                            this.misc_graphics.fillPath();
+                            break;
+                    }
+                }
+            }
+        }
         for (let i = 0; i < N + 1; i++) {
             let [v, id] = this.moves[0].simplex[i];
             this.three.vert_vec4s[id].fromArray(v);
             this.three.vert_vec4s[id].applyMatrix4(this.three.r1);
             v_smooth(this.three.vertices[id].position, this.three.vert_vec4s[id], delta * 0.005);
         }
-
         this.three.bounding_box.setFromObject(this.three.vertex_group);
         this.three.bounding_box.getBoundingSphere(this.three.bounding_sphere);
         //v_smooth(this.three.camera_pos, this.three.bounding_sphere.center, delta * 0.005);
@@ -1183,6 +1318,32 @@ class Play extends Phaser.Scene {
         this.three.tets[4].matrix.makeBasis(this.three.line_vecs[0 * (N + 1) + 1], this.three.line_vecs[0 * (N + 1) + 2], this.three.line_vecs[0 * (N + 1) + 3]);
         this.three.tets[4].matrix.setPosition(this.three.vertices[0].position);
         this.three.renderer.render(this.three.scene, this.three.camera);
+
+        for (let i = 0; i < 16; i++) {
+            let value = Math.max(-1, Math.min(1, this.three.r1.elements[i]));
+            if (value > 0) {
+                this.rot4_rects[i].setFillStyle(0xaa00ff, value);
+            } else {
+                this.rot4_rects[i].setFillStyle(0xffaa00, -value);
+            }
+        }
+        for (let i = 0; i < 16; i++) {
+            let value = Math.max(-1, Math.min(1, this.three.camera.matrixWorldInverse.elements[i]));
+            if (value > 0) {
+                this.world_rects[i].setFillStyle(0xaa00ff, value);
+            } else {
+                this.world_rects[i].setFillStyle(0xffaa00, -value);
+            }
+        }
+        for (let i = 0; i < 16; i++) {
+            let value = Math.max(-1, Math.min(1, this.three.camera.projectionMatrix.elements[i]));
+            if (value > 0) {
+                this.proj_rects[i].setFillStyle(0xaa00ff, value);
+            } else {
+                this.proj_rects[i].setFillStyle(0xffaa00, -value);
+            }
+        }
+
         for (let i = 0; i < 4; i++) {
             this.receptors[i].setScale(this.receptors[i].scale + 0.01 * delta * (1 - this.receptors[i].scale));
             this.flashes[i].setScale(this.flashes[i].scale + 0.01 * delta * (1.5 - this.flashes[i].scale));

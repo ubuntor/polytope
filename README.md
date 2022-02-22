@@ -1,2 +1,2 @@
 # Polytope
-uhh
+warning: game jam quality code!

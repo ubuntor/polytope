@@ -9,6 +9,7 @@
         integrity="sha384-VQ8d8WVFw0yHhCk5E8I86oOhv48xLpnDZx5T9GogA/Y84DcCKWXDmSDfn13bzFZY"
         crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <script type="module" src="app.js"></script>
     <style>
         body {
             margin: 0;
@@ -17,18 +18,65 @@
         .katex {
             color: white;
             position: absolute;
-            font: normal 0.79em KaTeX_Main, Times New Roman, serif;
-            left: 310px;
-            top: 20px;
+            font: normal 0.92em KaTeX_Main, Times New Roman, serif;
             z-index: -1;
         }
     </style>
 </head>
 
 <body>
-    <script type="module" src="app.js"></script>
-    <!-- f(x,y,z,w) = -\underbrace{\left(\sin(x+y) + (x-y)^2 - 1.5x+2.5y+1\right)}_{\text{McCormick}}-\underbrace{\left(\frac{z^4 - 16z^2 + 5z + w^4 - 16w + 5w}{2}\right)}_\text{Styblinski–Tang}+\varepsilon\enspace (\varepsilon \sim \mathcal{N}(0,10^{-8})) -->
-    <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML">
+    <!-- \left(\varepsilon \sim \mathcal{N}\left(0,10^{-8}\right)\right)" -->
+    <span class="katex" style="left:800px;top:100px"><span class="katex-mathml"><math
+                xmlns="http://www.w3.org/1998/Math/MathML">
+                <semantics>
+                    <mrow>
+                        <mo fence="true">(</mo>
+                        <mi>ε</mi>
+                        <mo>∼</mo>
+                        <mi mathvariant="script">N</mi>
+                        <mrow>
+                            <mo fence="true">(</mo>
+                            <mn>0</mn>
+                            <mo separator="true">,</mo>
+                            <mn>1</mn>
+                            <msup>
+                                <mn>0</mn>
+                                <mrow>
+                                    <mo>−</mo>
+                                    <mn>8</mn>
+                                </mrow>
+                            </msup>
+                            <mo fence="true">)</mo>
+                        </mrow>
+                        <mo fence="true">)</mo>
+                    </mrow>
+                    <annotation encoding="application/x-tex">\left(\varepsilon \sim
+                        \mathcal{N}\left(0,10^{-8}\right)\right)
+                    </annotation>
+                </semantics>
+            </math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut"
+                    style="height:1.2em;vertical-align:-0.35em;"></span><span class="minner"><span
+                        class="mopen delimcenter" style="top:0em;"><span class="delimsizing size1">(</span></span><span
+                        class="mord mathnormal">ε</span><span class="mspace" style="margin-right:0.2778em;"></span><span
+                        class="mrel">∼</span><span class="mspace" style="margin-right:0.2778em;"></span><span
+                        class="mord mathcal" style="margin-right:0.14736em;">N</span><span class="mspace"
+                        style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter"
+                            style="top:0em;"><span class="delimsizing size1">(</span></span><span
+                            class="mord">0</span><span class="mpunct">,</span><span class="mspace"
+                            style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mord"><span
+                                class="mord">0</span><span class="msupsub"><span class="vlist-t"><span
+                                        class="vlist-r"><span class="vlist" style="height:0.8141em;"><span
+                                                style="top:-3.063em;margin-right:0.05em;"><span class="pstrut"
+                                                    style="height:2.7em;"></span><span
+                                                    class="sizing reset-size6 size3 mtight"><span
+                                                        class="mord mtight"><span class="mord mtight">−</span><span
+                                                            class="mord mtight">8</span></span></span></span></span></span></span></span></span><span
+                            class="mclose delimcenter" style="top:0em;"><span
+                                class="delimsizing size1">)</span></span></span><span class="mclose delimcenter"
+                        style="top:0em;"><span class="delimsizing size1">)</span></span></span></span></span></span>
+    <!-- f(x,y,z,w) = -\underbrace{\left(\sin(x+y) + (x-y)^2 - 1.5x+2.5y+1\right)}_{\text{McCormick}}-\underbrace{\left(\frac{z^4 - 16z^2 + 5z + w^4 - 16w + 5w}{2}\right)}_\text{Styblinski–Tang}+\varepsilon -->
+    <span class="katex" style="left:310px;top:20px"><span class="katex-mathml"><math
+                xmlns="http://www.w3.org/1998/Math/MathML">
                 <semantics>
                     <mrow>
                         <mi>f</mi>
@@ -119,29 +167,10 @@
                         </munder>
                         <mo>+</mo>
                         <mi>ε</mi>
-                        <mspace width="0.5em" />
-                        <mo stretchy="false">(</mo>
-                        <mi>ε</mi>
-                        <mo>∼</mo>
-                        <mi mathvariant="script">N</mi>
-                        <mo stretchy="false">(</mo>
-                        <mn>0</mn>
-                        <mo separator="true">,</mo>
-                        <mn>1</mn>
-                        <msup>
-                            <mn>0</mn>
-                            <mrow>
-                                <mo>−</mo>
-                                <mn>8</mn>
-                            </mrow>
-                        </msup>
-                        <mo stretchy="false">)</mo>
-                        <mo stretchy="false">)</mo>
                     </mrow>
                     <annotation encoding="application/x-tex">f(x,y,z,w) = -\underbrace{\left(\sin(x+y) + (x-y)^2 -
                         1.5x+2.5y+1\right)}_{\text{McCormick}}-\underbrace{\left(\frac{z^4 - 16z^2 + 5z + w^4 - 16w +
-                        5w}{2}\right)}_\text{Styblinski–Tang}+\varepsilon\enspace (\varepsilon \sim
-                        \mathcal{N}(0,10^{-8}))
+                        5w}{2}\right)}_\text{Styblinski–Tang}+\varepsilon
                     </annotation>
                 </semantics>
             </math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut"
@@ -403,22 +432,7 @@
                                 style="height:2.4202em;"><span></span></span></span></span></span><span class="mspace"
                     style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace"
                     style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut"
-                    style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">ε</span><span
-                    class="mspace" style="margin-right:0.5em;"></span><span class="mopen">(</span><span
-                    class="mord mathnormal">ε</span><span class="mspace" style="margin-right:0.2778em;"></span><span
-                    class="mrel">∼</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span
-                class="base"><span class="strut" style="height:1.0641em;vertical-align:-0.25em;"></span><span
-                    class="mord mathcal" style="margin-right:0.14736em;">N</span><span class="mopen">(</span><span
-                    class="mord">0</span><span class="mpunct">,</span><span class="mspace"
-                    style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mord"><span
-                        class="mord">0</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span
-                                    class="vlist" style="height:0.8141em;"><span
-                                        style="top:-3.063em;margin-right:0.05em;"><span class="pstrut"
-                                            style="height:2.7em;"></span><span
-                                            class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span
-                                                    class="mord mtight">−</span><span
-                                                    class="mord mtight">8</span></span></span></span></span></span></span></span></span><span
-                    class="mclose">))</span></span></span></span>
+                    style="height:0.4306em;"></span><span class="mord mathnormal">ε</span></span></span></span>
 </body>
 
 </html>
