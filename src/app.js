@@ -400,12 +400,41 @@ class Play extends Phaser.Scene {
         }
     }
 
+    judge(x, mult) {
+        for (let i = 0; i < 3; i++) {
+            let target = this.judge_texts[i];
+            if (target.tweens) {
+                target.tweens[0].remove();
+                target.tweens[1].remove();
+            }
+            if (x == i) {
+                target.setAlpha(1);
+                target.setScale(1.2);
+                target.tweens = [this.tweens.add({
+                    targets: target,
+                    scale: 1,
+                    duration: 200,
+                    ease: 'Quad.easeOut',
+                }),
+                this.tweens.add({
+                    targets: target,
+                    alpha: 0,
+                    delay: 1000,
+                    duration: 500,
+                    ease: 'Quad.easeOut',
+                })];
+            } else {
+                target.setAlpha(0);
+            }
+        }
+    }
+
     process_move(x) {
         if (x != -1) {
             this.receptors[x].setScale(0.8);
         }
         // TODO: freestyle
-        if (x == this.moves[0].move || this.climax || x == -1) {
+        if (x == this.moves[0].move || this.finale || x == -1) {
             if (x != -1) {
                 this.flashes[x].setScale(1);
                 this.flashes[x].setAlpha(1);
@@ -423,7 +452,7 @@ class Play extends Phaser.Scene {
                 this.text_particles[this.text_particle_index].tweens[1].remove();
             }
             this.text_particles[this.text_particle_index].setAlpha(1).setScale(1).setText(new_word);
-            if (this.climax) {
+            if (this.finale) {
                 this.text_particles[this.text_particle_index].setPosition(W / 2 + Phaser.Math.FloatBetween(-300, 300), H / 2 + Phaser.Math.FloatBetween(-400, 400));
             }
             this.text_particles[this.text_particle_index].tweens = [this.tweens.add({
@@ -439,9 +468,20 @@ class Play extends Phaser.Scene {
                 ease: 'Expo.easeOut',
             })];
 
+            let judgement;
+            if (this.potential > 0.8) {
+                judgement = 0;
+            } else if (this.potential > 0.6) {
+                judgement = 1;
+            } else {
+                judgement = 2;
+            }
+            if (!this.finale) {
+                this.judge(judgement, this.moves[0].mult);
+            }
             this.text_particle_index = (this.text_particle_index + 1) % NUM_TEXT_PARTICLES;
 
-            if (this.climax) {
+            if (this.finale) {
                 this.freestyle_score += 100;
                 this.score += 100;
             } else {
@@ -457,10 +497,10 @@ class Play extends Phaser.Scene {
             if (this.moves.length < VISIBLE_MOVES) {
                 this.moves = this.moves.concat(this.gen.next().value);
             }
-            if (!this.climax) {
+            if (!this.finale) {
                 this.intensity += 0.01 * this.potential;
                 if (this.intensity > 1) {
-                    this.climax = true;
+                    this.finale = true;
                     this.is_warning = false;
                     this.warning.setAlpha(0);
                     this.intensity = 1;
@@ -469,7 +509,7 @@ class Play extends Phaser.Scene {
             this.potential = 0;
             this.color_code_lines();
         } else {
-            if (!this.climax) {
+            if (!this.finale) {
                 this.intensity = Math.max(this.intensity - 0.015, 0);
             }
         }
@@ -572,7 +612,7 @@ class Play extends Phaser.Scene {
         }, this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P).on('down', function (key, event) {
             this.intensity = 1;
-            this.climax = true;
+            this.finale = true;
         }, this);
         // end remove this
 
@@ -666,12 +706,12 @@ class Play extends Phaser.Scene {
             this.three.tet_p.push(new THREE.Vector4());
         }
 
-        this.three.r_zw = 0;
-        this.three.r_xy = 0;
-        this.three.r_yw = 0;
-        this.three.r_zx = 0;
-        this.three.r_zy = 0;
-        this.three.r_xy2 = 0;
+        this.three.r_zw = Math.random() * 2 * Math.PI;
+        this.three.r_xy = Math.random() * 2 * Math.PI;
+        this.three.r_yw = Math.random() * 2 * Math.PI;
+        this.three.r_zx = Math.random() * 2 * Math.PI;
+        this.three.r_zy = Math.random() * 2 * Math.PI;
+        this.three.r_xy2 = Math.random() * 2 * Math.PI;
         this.three.r1 = new THREE.Matrix4();
         this.three.r2 = new THREE.Matrix4();
         this.three.r3 = new THREE.Matrix4();
@@ -731,8 +771,6 @@ class Play extends Phaser.Scene {
         this.add.text(F(720), H - F(25), '\u00b5:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
         this.range_draw = 0;
         this.mean_draw = 0;
-
-
         {
             let offset = 15;
             this.add.polygon(0, 0, [
@@ -764,7 +802,6 @@ class Play extends Phaser.Scene {
             this.add.text(F(500 + offset), F(95 + 4 * height), 'zy:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
             this.add.text(F(500 + offset), F(95 + 5 * height), 'xy2:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
         }
-
         {
             let offset = 350;
             this.add.polygon(0, 0, [
@@ -811,10 +848,15 @@ class Play extends Phaser.Scene {
             }
             this.add.text(F(390 + offset - 2), F(139), '3D proj', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5, 1).setAngle(-90);
         }
+        this.judge_texts = [
+            this.add.text(F(210), H - F(300), 'great!', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0),
+            this.add.text(F(210), H - F(300), 'good', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0),
+            this.add.text(F(210), H - F(300), 'slow down...', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0)
+        ]
     }
 
     update(time, delta) {
-        if (!this.climax && !this.is_warning && this.intensity > 0.9) {
+        if (!this.finale && !this.is_warning && this.intensity > 0.9) {
             this.is_warning = true;
             this.cameras.main.zoom = 1.03;
             this.camera_thump = this.tweens.add({
@@ -1167,7 +1209,7 @@ class Play extends Phaser.Scene {
             }
         }
 
-        if (!this.climax) {
+        if (!this.finale) {
             this.intensity = Math.max(this.intensity - 0.00003 * this.intensity * delta, 0);
         }
         let intensity_mask_target = (1 - this.intensity) * (H - F(200) - 2);
