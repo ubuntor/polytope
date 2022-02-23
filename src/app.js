@@ -77,16 +77,65 @@ const sin = Math.sin;
 const words = [
     ['expand', 'stretch', 'larger', 'inflate', 'extend', 'bigger', 'fill', 'grow', 'reach', 'further', 'more'],
     ['reflect', 'turn over', 'turn around', 'other side', 'flip', 'go over', 'go under', 'go through', 'go above', 'go below'],
-    ['contract', 'squeeze', 'squish', 'shrink', 'smaller', 'deflate', 'hug', 'closer', 'compress'],
+    ['contract', 'squeeze', 'squish', 'shrink', 'smaller', 'deflate', 'hug', 'closer', 'compress', 'within'],
 ]
 words[3] = words[2];
 const NUM_TEXT_PARTICLES = 50;
+
+// modified from https://www.shadertoy.com/view/XljGzV
+const finale_shader = `
+#define SHADER_NAME FINALE_FS
+
+precision mediump float;
+
+uniform sampler2D uMainSampler;
+uniform float uTime;
+uniform float uSat;
+
+varying vec2 outTexCoord;
+
+vec3 hsv2rgb(vec3 c)
+{
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+void main()
+{
+	vec2 uv = outTexCoord.xy;
+    vec3 rainbow = hsv2rgb(vec3(uv.x+uv.y+uTime, uSat, 1));
+    gl_FragColor = texture2D(uMainSampler,outTexCoord) * vec4(rainbow,1.0);
+}
+`;
+
+class FinaleFX extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
+    constructor(game) {
+        super({
+            game,
+            name: 'FinaleFX',
+            fragShader: finale_shader,
+            uniforms: [
+                'uMainSampler',
+                'uTime',
+                'uSat'
+            ]
+        });
+        this.saturation = 0;
+        // does this get constructed twice???
+        console.log("created finale pipeline");
+    }
+    onPreRender() {
+        this.setTime('uTime');
+        this.set1f('uSat', this.saturation);
+    }
+}
 
 function balanced_ternary(x, precision) {
     var x = Math.floor(x * Math.pow(3, precision));
     let digits = [];
     let i = 0;
-    while (x > 0 || i < precision) {
+    while (x != 0 || i < precision) {
         let digit = [0, 1, -1][x % 3];
         digits.push(digit);
         x -= digit;
@@ -500,10 +549,33 @@ class Play extends Phaser.Scene {
             if (!this.finale) {
                 this.intensity += 0.01 * this.potential;
                 if (this.intensity > 1) {
+                    // finale!
                     this.finale = true;
                     this.is_warning = false;
                     this.warning.setAlpha(0);
                     this.intensity = 1;
+                    this.finale_piece.setAlpha(1);
+                    this.finale_piece.setScale(1.05);
+                    this.finale_text.setAlpha(1);
+                    this.finale_text.setScale(1.05);
+                    this.tweens.add({
+                        targets: this.finale_piece,
+                        scale: 1,
+                        duration: 200,
+                        ease: 'Quad.easeOut',
+                    })
+                    this.tweens.add({
+                        targets: this.finale_pipeline,
+                        saturation: 0.4,
+                        duration: 200,
+                        ease: 'Quad.easeOut',
+                    })
+                    this.tweens.add({
+                        targets: this.finale_text,
+                        scale: 1,
+                        duration: 200,
+                        ease: 'Quad.easeOut',
+                    })
                 }
             }
             this.potential = 0;
@@ -612,7 +684,7 @@ class Play extends Phaser.Scene {
         }, this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P).on('down', function (key, event) {
             this.intensity = 1;
-            this.finale = true;
+            //this.finale = true;
         }, this);
         // end remove this
 
@@ -729,10 +801,14 @@ class Play extends Phaser.Scene {
         let field_mask = field_mask_shape.createGeometryMask();
         this.field_graphics.setMask(field_mask);
 
+        this.finale_piece = this.add.rexRoundRectangle(F(210) - 0.5, F(100), F(312), H - F(203), { tl: 0, tr: 0, bl: F(10), br: F(10) }, 0xffffff).setOrigin(0.5, 0).setAlpha(0).setPostPipeline(FinaleFX);
+        this.finale_pipeline = this.finale_piece.getPostPipeline(FinaleFX);
+
         this.flashes = [];
         for (let i = 0; i < 4; i++) {
             this.flashes.push(this.add.rexRoundRectangle(F(90 + 80 * i) - 0.5, H - F(140) - 0.5, F(70), F(70), F(10), 0xFFFFFF).setAlpha(0));
         }
+
 
         this.misc_graphics = this.add.graphics();
 
@@ -853,6 +929,7 @@ class Play extends Phaser.Scene {
             this.add.text(F(210), H - F(300), 'good', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0),
             this.add.text(F(210), H - F(300), 'slow down...', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0)
         ]
+        this.finale_text = this.add.text(F(210), H - F(450), 'FINALE', { font: `${48 * FS}pt Covenant`, fill: '#ffffff', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.5).setAlpha(0);
     }
 
     update(time, delta) {
@@ -1412,6 +1489,7 @@ async function main() {
         zoom: 1 / R,
         scene: Play,
         transparent: true,
+        pipeline: [FinaleFX]
         /*scale: {
             autoCenter: Phaser.Scale.CENTER_BOTH
         }*/
