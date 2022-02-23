@@ -82,6 +82,17 @@ const words = [
 words[3] = words[2];
 const NUM_TEXT_PARTICLES = 50;
 
+const background_canvas = document.createElement('canvas');
+document.body.appendChild(background_canvas);
+background_canvas.style.position = "absolute";
+background_canvas.style.top = `0px`;
+background_canvas.style.left = `0px`;
+background_canvas.width = 960;
+background_canvas.height = 720;
+background_canvas.style.zIndex = '-2';
+const background_ctx = background_canvas.getContext('2d');
+background_ctx.fillStyle = "#111111";
+
 // modified from https://www.shadertoy.com/view/XljGzV
 const finale_shader = `
 #define SHADER_NAME FINALE_FS
@@ -364,9 +375,29 @@ function s_smooth(src, target, delta) {
     src.setScalar(src.x + (target - src.x) * delta);
 }
 
+class Title extends Phaser.Scene {
+    constructor() {
+        super({ key: 'Title' });
+    }
+    create() {
+        this.add.text(W / 2, H / 2 - F(200), 'POLYTOPE', { font: `${196 * FS}pt Thaleah`, fill: '#FFFFFF' }).setOrigin(0.5);
+        this.add.text(W / 2, H / 2 + F(200), 'CLICK TO BEGIN', { font: `${48 * FS}pt Covenant`, fill: '#FFFFFF' }).setOrigin(0.5);
+        this.input.once('pointerdown', function () {
+            this.scene.start('Play');
+        }, this);
+    }
+    update(time, delta) {
+        background_ctx.fillRect(0, 0, 960, 720);
+    }
+}
+
 class Play extends Phaser.Scene {
+    constructor() {
+        super({ key: 'Play' });
+    }
     async preload() {
         this.load.plugin('rexroundrectangleplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/8b4ad8083e48019f39b37d8f629379851ca8ec13/dist/rexroundrectangleplugin.min.js', true);
+        this.loading_text = this.add.text(W / 2, H / 2, 'loading...', { font: `${48 * FS}pt Covenant`, fill: '#FFFFFF' }).setOrigin(0.5);
     }
 
     set_code_color(i, is_green) {
@@ -553,6 +584,7 @@ class Play extends Phaser.Scene {
                     this.is_warning = false;
                     this.warning.setAlpha(0);
                     this.intensity = 1;
+                    this.potential = 1;
                     this.finale_container.setAlpha(1).setScale(1.05);
                     this.tweens.add({
                         targets: this.finale_pipeline,
@@ -567,8 +599,8 @@ class Play extends Phaser.Scene {
                         ease: 'Quad.easeOut',
                     });
                 }
+                this.potential = 0;
             }
-            this.potential = 0;
             this.color_code_lines();
         } else {
             if (!this.finale) {
@@ -578,18 +610,11 @@ class Play extends Phaser.Scene {
     }
 
     create() {
-        [this.moves, this.gen] = init_moves(f, [-0.5, -1, -2, -2]);
+        for (let i of document.getElementsByClassName('katex')) {
+            i.style.display = 'block';
+        }
 
-        this.background_canvas = document.createElement('canvas');
-        document.body.appendChild(this.background_canvas);
-        this.background_canvas.style.position = "absolute";
-        this.background_canvas.style.top = `0px`;
-        this.background_canvas.style.left = `0px`;
-        this.background_canvas.width = 960;
-        this.background_canvas.height = 720;
-        this.background_canvas.style.zIndex = '-2';
-        this.background_ctx = this.background_canvas.getContext('2d');
-        this.background_ctx.fillStyle = "#111111";
+        [this.moves, this.gen] = init_moves(f, [-0.5, -1, -2, -2]);
         //this.cameras.main.setBackgroundColor("#111111");
         this.add.rectangle(F(50) - 0.5, F(100) - 0.5, F(320), H - F(200)).setStrokeStyle(1, 0xf23af2).setOrigin(0);
         for (let i = 1; i <= 3; i++) {
@@ -924,6 +949,7 @@ class Play extends Phaser.Scene {
             this.add.text(F(210), H - F(300), 'good', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0),
             this.add.text(F(210), H - F(300), 'slow down...', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0)
         ]
+        this.loading_text.destroy();
     }
 
     update(time, delta) {
@@ -956,7 +982,7 @@ class Play extends Phaser.Scene {
             this.warning.setTint(0xff0000 + 0x000100 * Math.max(0, Math.min(255, Math.floor(255 * (0.95 - this.intensity) / 0.1))));
         }
 
-        this.background_ctx.fillRect(0, 0, 960, 720);
+        background_ctx.fillRect(0, 0, 960, 720);
         this.potential = Math.min(this.potential + 0.001 * delta * (1 + 150 * Math.pow(this.intensity, 3)), 1);
         if (!this.climax) {
             this.field_graphics.clear();
@@ -1531,7 +1557,7 @@ async function main() {
         width: W,
         height: H,
         zoom: 1 / R,
-        scene: Play,
+        scene: [Title, Play],
         transparent: true,
         pipeline: [FinaleFX]
         /*scale: {
