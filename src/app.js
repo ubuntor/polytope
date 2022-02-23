@@ -520,22 +520,18 @@ class Play extends Phaser.Scene {
         if (this.end_screen) {
             return;
         }
-        if (x != -1) {
-            this.receptors[x].setScale(0.8);
-        }
-        if (x == this.moves[0].move || this.finale || x == -1) {
-            if (x != -1) {
-                this.flashes[x].setScale(1);
-                this.flashes[x].setAlpha(1);
-            }
+        this.receptors[x].setScale(0.8);
+        if (x == this.moves[0].move || this.finale) {
+            this.flashes[x].setScale(1);
+            this.flashes[x].setAlpha(1);
             let wordlist = words[this.moves[0].move];
 
-            let old_word = this.old_word;
-            let new_word = old_word;
+            let old_word = this.old_words[x];
+            let new_word = wordlist[Math.floor(Math.random() * wordlist.length)];
             while (old_word == new_word) {
                 new_word = wordlist[Math.floor(Math.random() * wordlist.length)];
             }
-            this.old_word = new_word;
+            this.old_words[x] = new_word;
             if (this.text_particles[this.text_particle_index].tweens) {
                 this.text_particles[this.text_particle_index].tweens[0].remove();
                 this.text_particles[this.text_particle_index].tweens[1].remove();
@@ -662,6 +658,7 @@ class Play extends Phaser.Scene {
         this.range_draw = 0;
         this.mean_draw = 0;
         this.intensity = 0;
+        this.wikipedia_y = 0;
         this.potential = 1;
         this.is_warning = false;
         this.warning.setAlpha(0);
@@ -675,6 +672,10 @@ class Play extends Phaser.Scene {
         }
         this.cameras.main.zoom = 1;
         this.is_replayable = false;
+        for (let i = 0; i < NUM_TEXT_PARTICLES; i++) {
+            this.text_particles[i].setPosition(W / 2, H / 2);
+        }
+        this.intensity_mask.height = H - F(200) - 2;
     }
 
     create() {
@@ -682,7 +683,6 @@ class Play extends Phaser.Scene {
             i.style.display = 'block';
         }
 
-        //this.cameras.main.setBackgroundColor("#111111");
         this.add.rectangle(F(50) - 0.5, F(100) - 0.5, F(320), H - F(200)).setStrokeStyle(1, 0xf23af2).setOrigin(0);
         for (let i = 1; i <= 3; i++) {
             this.add.line(0, 0, F(50 + 80 * i) - 0.5, F(100) - 0.5, F(50 + 80 * i) - 0.5, H - F(100) - 0.5).setStrokeStyle(1, 0xf23af2, 0.33).setOrigin(0, 0);
@@ -735,7 +735,6 @@ class Play extends Phaser.Scene {
         this.wikipedia = this.make.text({
             x: F(55), y: F(-5), text: WIKIPEDIA, style: { font: `${24 * FS}pt m3x6`, fill: 'white', lineSpacing: R2 * -15, wordWrap: { width: F(320) } }
         });
-        this.wikipedia_y = 0;
         this.wikipedia.setMask(mask);
 
         this.add.text(W - F(250), F(190), 'ALGORITHM', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1);
@@ -758,7 +757,7 @@ class Play extends Phaser.Scene {
         }
         // TODO: remove this
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M).on('down', function (key, event) {
-            this.process_move(-1);
+            this.process_move(this.moves[0].move);
         }, this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L).on('down', function (key, event) {
             this.intensity = 0.9;
@@ -1006,7 +1005,7 @@ class Play extends Phaser.Scene {
         this.finale_rect = this.add.rectangle(0, 0, W, H, 0xffffff).setOrigin(0).setPostPipeline(FinaleFX);
         this.finale_rect.getPostPipeline(FinaleFX).saturation = 0.4;
         this.convergence = this.add.text(W / 2, H / 2 - F(20), 'CONVERGENCE', { font: `${128 * FS}pt Thaleah`, fill: '#ff9cf3', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.495, 0.7).setAlpha(0);
-
+        this.old_words = Array(4).fill('');
         this.reinit();
         this.loading_text.destroy();
     }
