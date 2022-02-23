@@ -1,6 +1,8 @@
 import * as THREE from 'https://cdn.skypack.dev/three@0.137.5';
 import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/loaders/GLTFLoader.js';
 
+// blargh everything's using == and != but i don't want to go back and fix everything
+
 const N = 4;
 const ALPHA = 1;
 const BETA = 1 + 2 / N;
@@ -13,7 +15,7 @@ const H = 720 * R;
 const R2 = R / 1.25;
 const FS = Math.round(R); // font scale
 const F = (x) => Math.floor(x * R2);
-const TRIALS = 100;
+const TRIALS = 50;
 const WIKIPEDIA = `The Nelder-Mead method (also downhill simplex method, amoeba method, or polytope method) is a commonly applied numerical method used to find the minimum or maximum of an objective function in a multidimensional space. It is a direct search method (based on function comparison) and is often applied to nonlinear optimization problems for which derivatives may not be known. However, the Nelder-Mead technique is a heuristic search method that can converge to non-stationary points on problems that can be solved by alternative methods.
 
 The Nelder-Mead technique was proposed by John Nelder and Roger Mead in 1965, as a development of the method of Spendley et al.
@@ -345,7 +347,7 @@ function init_moves(f, x0_init) {
         let simplex = make_simplex(x0);
         let moves = [];
         let gen = next_states(f, simplex);
-        while (moves.length < 500) {
+        while (moves.length < 200) {
             moves = moves.concat(gen.next().value);
         }
         let counts = [0, 0, 0, 0];
@@ -380,7 +382,7 @@ class Title extends Phaser.Scene {
         super({ key: 'Title' });
     }
     create() {
-        this.add.text(W / 2, H / 2 - F(200), 'POLYTOPE', { font: `${192 * FS}pt Thaleah`, fill: '#ff9cf3' }).setOrigin(0.5);
+        this.add.text(W / 2, H / 2 - F(200), 'POLYTOPE', { font: `${176 * FS}pt Thaleah`, fill: '#ff9cf3' }).setOrigin(0.5);
         this.add.text(W / 2, H / 2 + F(200), 'CLICK TO BEGIN', { font: `${48 * FS}pt Covenant`, fill: '#FFFFFF' }).setOrigin(0.5);
         this.input.once('pointerdown', function () {
             this.scene.start('Play');
@@ -512,6 +514,9 @@ class Play extends Phaser.Scene {
     }
 
     process_move(x) {
+        if (this.is_replayable && x == 0) {
+            this.reinit();
+        }
         if (this.end_screen) {
             return;
         }
@@ -591,6 +596,7 @@ class Play extends Phaser.Scene {
                     this.intensity = 1;
                     this.potential = 1;
                     this.finale_container.setAlpha(1).setScale(1.05);
+                    this.convergence.setScale(0.75);
                     this.tweens.add({
                         targets: this.convergence,
                         alpha: 1,
@@ -599,7 +605,7 @@ class Play extends Phaser.Scene {
                     });
                     this.tweens.add({
                         targets: this.convergence,
-                        scale: 1.6,
+                        scale: 1,
                         duration: 12000,
                         ease: 'Quad.easeOut',
                     });
@@ -624,6 +630,9 @@ class Play extends Phaser.Scene {
                             console.log("end!");
                             console.log(scene.end_screen);
                             scene.end_screen = true;
+                            if (scene.camera_thump) {
+                                scene.camera_thump.remove();
+                            }
                             // TODO: add score, fancy graphics, "play again?", etc.
                         },
                         onCompleteParams: [this]
@@ -639,12 +648,40 @@ class Play extends Phaser.Scene {
         }
     }
 
+    reinit() {
+        [this.moves, this.gen] = init_moves(f, [-0.5, -1, -2, -2]);
+        this.color_code_lines();
+        this.score = 0;
+        this.score_draw = 0;
+        this.finale_bonus = 0;
+        this.finale_bonus_draw = 0;
+        this.text_particle_index = 0;
+        this.f1_draw = 0;
+        this.fn1_draw = 0;
+        this.warning_offset = 0;
+        this.range_draw = 0;
+        this.mean_draw = 0;
+        this.intensity = 0;
+        this.potential = 1;
+        this.is_warning = false;
+        this.warning.setAlpha(0);
+        this.finale = false;
+        this.finale_rect.setAlpha(0);
+        this.end_screen = false;
+        this.finale_container.setAlpha(0);
+        this.convergence.setAlpha(0);
+        if (this.camera_thump) {
+            this.camera_thump.remove();
+        }
+        this.cameras.main.zoom = 1;
+        this.is_replayable = false;
+    }
+
     create() {
         for (let i of document.getElementsByClassName('katex')) {
             i.style.display = 'block';
         }
 
-        [this.moves, this.gen] = init_moves(f, [-0.5, -1, -2, -2]);
         //this.cameras.main.setBackgroundColor("#111111");
         this.add.rectangle(F(50) - 0.5, F(100) - 0.5, F(320), H - F(200)).setStrokeStyle(1, 0xf23af2).setOrigin(0);
         for (let i = 1; i <= 3; i++) {
@@ -712,7 +749,6 @@ class Play extends Phaser.Scene {
         for (let i = 0; i < codelines.length; i++) {
             this.code[i].setScale(codescale);
         }
-        this.color_code_lines();
 
         let keycodes = [Phaser.Input.Keyboard.KeyCodes.Z, Phaser.Input.Keyboard.KeyCodes.X, Phaser.Input.Keyboard.KeyCodes.C, Phaser.Input.Keyboard.KeyCodes.V];
         for (let i = 0; i < keycodes.length; i++) {
@@ -727,6 +763,9 @@ class Play extends Phaser.Scene {
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L).on('down', function (key, event) {
             this.intensity = 0.9;
         }, this);
+        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.I).on('down', function (key, event) {
+            this.reinit();
+        }, this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P).on('down', function (key, event) {
             this.intensity = 1;
             //this.finale = true;
@@ -734,12 +773,10 @@ class Play extends Phaser.Scene {
         // end remove this
 
         this.add.text(F(35), H - F(100), 'INTENSITY', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1).setAngle(-90);
-        this.intensity = 0;
         this.add.rectangle(F(35), F(100), F(9), H - F(200), 0xf23af2).setOrigin(0);
         this.intensity_mask = this.add.rectangle(F(35) + 1, F(100) + 1, F(9) - 2, H - F(200) - 2, 0x000000).setOrigin(0);
-
         this.add.text(F(385), H - F(98), 'POTENTIAL', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(1, 1).setAngle(90);
-        this.potential = 1;
+
         this.add.rectangle(F(377), F(600), F(8), H - F(700), 0xf23af2).setOrigin(0);
         this.potential_mask = this.add.rectangle(F(377) + 1, F(600) + 1, F(8) - 2, 0, 0x000000).setOrigin(0);
 
@@ -850,7 +887,7 @@ class Play extends Phaser.Scene {
         let finale_piece = this.add.rexRoundRectangle(0, 0, F(312), H - F(203), { tl: 0, tr: 0, bl: F(10), br: F(10) }, 0xffffff).setOrigin(0.5, 0).setPostPipeline(FinaleFX);
         this.finale_pipeline = finale_piece.getPostPipeline(FinaleFX);
         this.finale_container.add(finale_piece);
-        this.finale_container.add(this.add.text(F(5), F(300), 'FINALE', { font: `${48 * FS}pt Covenant`, fill: '#ffffff', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.5));
+        this.finale_container.add(this.add.text(F(5), F(300), 'FINALE', { font: `${36 * FS}pt Covenant`, fill: '#ffffff', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.5));
         this.finale_container.add(this.add.text(F(5), F(400), 'BONUS', { font: `${24 * FS}pt Covenant`, fill: '#ffffff', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.5));
 
         this.flashes = [];
@@ -860,19 +897,11 @@ class Play extends Phaser.Scene {
 
         this.misc_graphics = this.add.graphics();
 
-        this.score = 0;
-        this.score_draw = 0;
-        this.finale_bonus = 0;
-        this.finale_bonus_draw = 0;
-
-        this.text_particle_index = 0;
         this.text_particles = [];
         for (let i = 0; i < NUM_TEXT_PARTICLES; i++) {
             this.text_particles.push(this.add.text(W / 2, H / 2, 'TEXT', { font: `${192 * FS}pt Covenant`, fill: '#ff9cf340', stroke: '#ff9cf3', strokeThickness: 4 }).setOrigin(0.5).setAlpha(0))
         }
 
-        this.f1_draw = 0;
-        this.fn1_draw = 0;
         this.add.text(F(960), H - F(160), 'f1', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
         this.f_mids = [
             this.add.text(F(825), H - F(115), 'f2', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5),
@@ -890,12 +919,8 @@ class Play extends Phaser.Scene {
         this.f_misc_draw = Array(4).fill(0);
         this.warning = this.add.text(F(50), H - F(400), 'WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  ', { font: `${60 * FS}pt m3x6`, fill: '#ffffff' }).setAlpha(0);
         this.warning.setMask(field_mask);
-        this.warning_offset = 0;
-        this.is_warning = false;
         this.add.text(F(480), H - F(25), 'f1-f5:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
         this.add.text(F(720), H - F(25), '\u00b5:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
-        this.range_draw = 0;
-        this.mean_draw = 0;
         {
             let offset = 15;
             this.add.polygon(0, 0, [
@@ -978,10 +1003,11 @@ class Play extends Phaser.Scene {
             this.add.text(F(210), H - F(300), 'good', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0),
             this.add.text(F(210), H - F(300), 'slow down...', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0)
         ]
-        this.finale_rect = this.add.rectangle(0, 0, W, H, 0xffffff).setOrigin(0).setPostPipeline(FinaleFX).setAlpha(0);
+        this.finale_rect = this.add.rectangle(0, 0, W, H, 0xffffff).setOrigin(0).setPostPipeline(FinaleFX);
         this.finale_rect.getPostPipeline(FinaleFX).saturation = 0.4;
-        this.end_screen = false;
-        this.convergence = this.add.text(W / 2, H / 2 - F(20), 'CONVERGENCE', { font: `${96 * FS}pt Thaleah`, fill: '#ff9cf3', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.495, 0.7).setAlpha(0);
+        this.convergence = this.add.text(W / 2, H / 2 - F(20), 'CONVERGENCE', { font: `${128 * FS}pt Thaleah`, fill: '#ff9cf3', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.495, 0.7).setAlpha(0);
+
+        this.reinit();
         this.loading_text.destroy();
     }
 
