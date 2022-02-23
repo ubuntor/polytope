@@ -380,14 +380,16 @@ class Title extends Phaser.Scene {
         super({ key: 'Title' });
     }
     create() {
-        this.add.text(W / 2, H / 2 - F(200), 'POLYTOPE', { font: `${196 * FS}pt Thaleah`, fill: '#FFFFFF' }).setOrigin(0.5);
+        this.add.text(W / 2, H / 2 - F(200), 'POLYTOPE', { font: `${192 * FS}pt Thaleah`, fill: '#ff9cf3' }).setOrigin(0.5);
         this.add.text(W / 2, H / 2 + F(200), 'CLICK TO BEGIN', { font: `${48 * FS}pt Covenant`, fill: '#FFFFFF' }).setOrigin(0.5);
         this.input.once('pointerdown', function () {
             this.scene.start('Play');
         }, this);
+        this.background_graphics = this.add.graphics();
     }
     update(time, delta) {
         background_ctx.fillRect(0, 0, 960, 720);
+        this.background_graphics.clear();
     }
 }
 
@@ -510,6 +512,9 @@ class Play extends Phaser.Scene {
     }
 
     process_move(x) {
+        if (this.end_screen) {
+            return;
+        }
         if (x != -1) {
             this.receptors[x].setScale(0.8);
         }
@@ -587,6 +592,18 @@ class Play extends Phaser.Scene {
                     this.potential = 1;
                     this.finale_container.setAlpha(1).setScale(1.05);
                     this.tweens.add({
+                        targets: this.convergence,
+                        alpha: 1,
+                        duration: 12000,
+                        ease: 'Quint.easeIn',
+                    });
+                    this.tweens.add({
+                        targets: this.convergence,
+                        scale: 1.6,
+                        duration: 12000,
+                        ease: 'Quad.easeOut',
+                    });
+                    this.tweens.add({
                         targets: this.finale_pipeline,
                         saturation: 0.4,
                         duration: 1000,
@@ -597,6 +614,19 @@ class Play extends Phaser.Scene {
                         scale: 1,
                         duration: 1000,
                         ease: 'Quad.easeOut',
+                    });
+                    this.tweens.add({
+                        targets: this.finale_rect,
+                        alpha: 1,
+                        duration: 10000,
+                        ease: 'Quint.easeIn',
+                        onComplete: function (tween, targets, scene) {
+                            console.log("end!");
+                            console.log(scene.end_screen);
+                            scene.end_screen = true;
+                            // TODO: add score, fancy graphics, "play again?", etc.
+                        },
+                        onCompleteParams: [this]
                     });
                 }
                 this.potential = 0;
@@ -828,7 +858,6 @@ class Play extends Phaser.Scene {
             this.flashes.push(this.add.rexRoundRectangle(F(90 + 80 * i) - 0.5, H - F(140) - 0.5, F(70), F(70), F(10), 0xFFFFFF).setAlpha(0));
         }
 
-
         this.misc_graphics = this.add.graphics();
 
         this.score = 0;
@@ -949,6 +978,10 @@ class Play extends Phaser.Scene {
             this.add.text(F(210), H - F(300), 'good', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0),
             this.add.text(F(210), H - F(300), 'slow down...', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0)
         ]
+        this.finale_rect = this.add.rectangle(0, 0, W, H, 0xffffff).setOrigin(0).setPostPipeline(FinaleFX).setAlpha(0);
+        this.finale_rect.getPostPipeline(FinaleFX).saturation = 0.4;
+        this.end_screen = false;
+        this.convergence = this.add.text(W / 2, H / 2 - F(20), 'CONVERGENCE', { font: `${96 * FS}pt Thaleah`, fill: '#ff9cf3', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.495, 0.7).setAlpha(0);
         this.loading_text.destroy();
     }
 
@@ -1427,8 +1460,8 @@ class Play extends Phaser.Scene {
                 this.three.r_zx,
                 this.three.r_zy,
                 this.three.r_xy2];
-            let xlo = F(500 + 15);
-            let xhi = F(680 + 15);
+            let xlo = F(500 + 20);
+            let xhi = F(680 + 20);
             for (let i = 0; i < 6; i++) {
                 let y = F(103 + 15 * i) - 0.5;
                 this.misc_graphics.lineBetween(xlo, y, xhi, y);
