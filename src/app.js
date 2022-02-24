@@ -104,20 +104,19 @@ precision mediump float;
 uniform sampler2D uMainSampler;
 uniform float uTime;
 uniform float uSat;
+uniform float uValue;
 
 varying vec2 outTexCoord;
 
-vec3 hsv2rgb(vec3 c)
-{
+vec3 hsv2rgb(vec3 c) {
     vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
     vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-void main()
-{
+void main() {
 	vec2 uv = outTexCoord.xy;
-    vec3 rainbow = hsv2rgb(vec3(uv.x+uv.y+uTime, uSat, 1));
+    vec3 rainbow = hsv2rgb(vec3(uv.x+uv.y+uTime, uSat, uValue));
     gl_FragColor = texture2D(uMainSampler,outTexCoord) * vec4(rainbow,1.0);
 }
 `;
@@ -131,16 +130,19 @@ class FinaleFX extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
             uniforms: [
                 'uMainSampler',
                 'uTime',
-                'uSat'
+                'uSat',
+                'uValue'
             ]
         });
         this.saturation = 0;
+        this.value = 1;
         // does this get constructed twice???
         console.log("created finale pipeline");
     }
     onPreRender() {
         this.setTime('uTime');
         this.set1f('uSat', this.saturation);
+        this.set1f('uValue', this.value);
     }
 }
 
@@ -149,7 +151,7 @@ function balanced_ternary(x, precision) {
     let digits = [];
     let i = 0;
     while (x != 0 || i < precision) {
-        let digit = [0, 1, -1][x % 3];
+        let digit = [0, 1, -1][(x % 3 + 3) % 3];
         digits.push(digit);
         x -= digit;
         x /= 3;
@@ -513,9 +515,91 @@ class Play extends Phaser.Scene {
         }
     }
 
+    do_ending() {
+        console.log("end!");
+        this.end_screen = true;
+        if (this.camera_thump) {
+            this.camera_thump.remove();
+        }
+        this.tweens.add({
+            targets: this.convergence,
+            y: F(100),
+            delay: 500,
+            duration: 1000,
+            ease: 'Quad.easeOut'
+        });
+        // TODO: add score, fancy graphics, "play again?", etc.
+        this.time.addEvent({
+            delay: 1500,
+            callback: () => {
+                this.ending_texts[0].setAlpha(1);
+            }
+        })
+        this.time.addEvent({
+            delay: 2000,
+            callback: () => {
+                this.ending_draw[0] = true;
+            }
+        })
+        this.time.addEvent({
+            delay: 2500,
+            callback: () => {
+                this.ending_texts[1].setAlpha(1);
+            }
+        })
+        this.time.addEvent({
+            delay: 3000,
+            callback: () => {
+                this.ending_draw[1] = true;
+            }
+        })
+        this.time.addEvent({
+            delay: 3500,
+            callback: () => {
+                this.ending_texts[2].setAlpha(1);
+            }
+        })
+        this.time.addEvent({
+            delay: 4000,
+            callback: () => {
+                this.ending_draw[2] = true;
+            }
+        })
+        this.time.addEvent({
+            delay: 5000,
+            callback: () => {
+                this.ending_texts[3].setAlpha(1);
+                this.is_replayable = true;
+            }
+        })
+    }
+
+    combo_break() {
+        if (this.combo_break_tween) {
+            this.combo_break_tween[0].remove();
+            this.combo_break_tween[1].remove();
+        }
+        this.combo_break_text.setScale(1.2);
+        this.combo_break_tween = [this.tweens.add({
+            targets: this.combo_break_text,
+            scale: 1,
+            duration: 100,
+            ease: 'Quad.easeOut'
+        }), this.tweens.add({
+            targets: this.combo_break_text,
+            scaleX: 1.5,
+            scaleY: 0,
+            delay: 1000,
+            duration: 100,
+            ease: 'Quad.easeOut'
+        })];
+        this.combo_text.setAlpha(0);
+    }
+
     process_move(x) {
         if (this.is_replayable && x == 0) {
             this.reinit();
+            return;
         }
         if (this.end_screen) {
             return;
@@ -563,6 +647,19 @@ class Play extends Phaser.Scene {
             }
             if (!this.finale) {
                 this.judge(judgement, this.moves[0].mult);
+                if (judgement == 2) {
+                    // TODO: combo break sign
+                    if (this.cur_combo > 1) {
+                        this.combo_break();
+                    }
+                    this.cur_combo = 1;
+                } else {
+                    this.cur_combo++;
+                    if (this.cur_combo > 1) {
+                        this.combo_text.setAlpha(1);
+                    }
+                    this.max_combo = Math.max(this.cur_combo, this.max_combo);
+                }
             }
             this.text_particle_index = (this.text_particle_index + 1) % NUM_TEXT_PARTICLES;
 
@@ -570,8 +667,10 @@ class Play extends Phaser.Scene {
                 this.finale_bonus += 100;
                 this.score += 100;
             } else {
-                let points = Math.floor(69 * (1 + 8 * Math.pow(this.intensity, 2)) * Math.pow(this.potential, 2) * this.moves[0].mult);
-                this.score += points;
+                let points = Math.floor(69 * (1 + 8 * Math.pow(this.intensity, 2)) * Math.pow(this.potential, 2));
+                this.draw_points = points;
+                this.draw_mult = this.moves[0].mult;
+                this.score += points * this.moves[0].mult;
             }
             for (let i = 0; i < N + 1; i++) {
                 if (this.moves[0].changed[i]) {
@@ -587,17 +686,34 @@ class Play extends Phaser.Scene {
                 if (this.intensity > 1) {
                     // finale!
                     this.finale = true;
+                    this.combo_text.setAlpha(0);
                     this.is_warning = false;
                     this.warning.setAlpha(0);
                     this.intensity = 1;
                     this.potential = 1;
-                    this.finale_container.setAlpha(1).setScale(1.05);
+                    this.finale_container.setAlpha(1).setScale(1.2);
                     this.convergence.setScale(0.75);
+                    this.convergence.setY(H / 2);
+                    if (this.camera_thump) {
+                        this.camera_thump.remove();
+                    }
+                    this.cameras.main.zoom = 1.03;
+                    this.camera_thump = this.tweens.add({
+                        targets: this.cameras.main,
+                        zoom: 1,
+                        loop: -1,
+                        duration: 500,
+                        ease: 'Sine.easeOut',
+                    });
                     this.tweens.add({
                         targets: this.convergence,
                         alpha: 1,
                         duration: 12000,
                         ease: 'Quint.easeIn',
+                        onComplete: function (tween, targets, scene) {
+                            scene.do_ending();
+                        },
+                        onCompleteParams: [this]
                     });
                     this.tweens.add({
                         targets: this.convergence,
@@ -620,18 +736,17 @@ class Play extends Phaser.Scene {
                     this.tweens.add({
                         targets: this.finale_rect,
                         alpha: 1,
+                        delay: 2000,
                         duration: 10000,
-                        ease: 'Quint.easeIn',
-                        onComplete: function (tween, targets, scene) {
-                            console.log("end!");
-                            console.log(scene.end_screen);
-                            scene.end_screen = true;
-                            if (scene.camera_thump) {
-                                scene.camera_thump.remove();
-                            }
-                            // TODO: add score, fancy graphics, "play again?", etc.
-                        },
-                        onCompleteParams: [this]
+                        ease: 'Quint.easeIn'
+                    });
+                    this.finale_rect_pipeline.value = 1;
+                    this.tweens.add({
+                        targets: this.finale_rect_pipeline,
+                        value: 0.3,
+                        delay: 12500,
+                        duration: 1000,
+                        ease: 'Quad.easeOut'
                     });
                 }
                 this.potential = 0;
@@ -640,6 +755,10 @@ class Play extends Phaser.Scene {
         } else {
             if (!this.finale) {
                 this.intensity = Math.max(this.intensity - 0.015, 0);
+                if (this.cur_combo > 1) {
+                    this.combo_break();
+                    this.cur_combo = 0;
+                }
             }
         }
     }
@@ -665,6 +784,7 @@ class Play extends Phaser.Scene {
         this.finale = false;
         this.finale_rect.setAlpha(0);
         this.end_screen = false;
+        this.ending_graphics.clear();
         this.finale_container.setAlpha(0);
         this.convergence.setAlpha(0);
         if (this.camera_thump) {
@@ -676,6 +796,15 @@ class Play extends Phaser.Scene {
             this.text_particles[i].setPosition(W / 2, H / 2);
         }
         this.intensity_mask.height = H - F(200) - 2;
+        this.cur_combo = 0;
+        this.max_combo = 0;
+        this.finale_pipeline.saturation = 0;
+        this.draw_points = 0;
+        this.draw_mult = 0;
+        for (let i = 0; i < 4; i++) {
+            this.ending_texts[i].setAlpha(0);
+            this.ending_draw[i] = false;
+        }
     }
 
     create() {
@@ -689,7 +818,8 @@ class Play extends Phaser.Scene {
         }
         this.add.text(F(390), F(10), 'OBJECTIVE FUNCTION', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(F(390), F(75), 'TRANSFORMS', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
-        this.add.text(W - F(200), H - F(60), 'SCORE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
+        this.add.text(W - F(200), H - F(110), 'MAX COMBO', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
+        this.add.text(W - F(200), H - F(55), 'SCORE', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' });
         this.add.text(F(90), H - F(88), 'EXPAND', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
         this.add.text(F(170), H - F(88), 'REFLECT', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
         this.add.text(F(250), H - F(88), 'CONTRACT', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
@@ -737,12 +867,12 @@ class Play extends Phaser.Scene {
         });
         this.wikipedia.setMask(mask);
 
-        this.add.text(W - F(250), F(190), 'ALGORITHM', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1);
+        this.add.text(W - F(250), F(160), 'ALGORITHM', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1);
         // pixel fonts + devicePixelRatio nonsense = :(
         let codelines = CODE.split('\n');
         this.code = [];
         for (let i = 0; i < codelines.length; i++) {
-            this.code.push(this.make.text({ x: F(950), y: F(180 + i * 16), text: codelines[i], style: { font: `${48 * FS}pt m3x6`, fill: 'white' } }));
+            this.code.push(this.make.text({ x: F(950), y: F(150 + i * 16), text: codelines[i], style: { font: `${48 * FS}pt m3x6`, fill: 'white' } }));
         }
         let codescale = F(248) / this.code[6].displayWidth;
         for (let i = 0; i < codelines.length; i++) {
@@ -762,12 +892,8 @@ class Play extends Phaser.Scene {
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L).on('down', function (key, event) {
             this.intensity = 0.9;
         }, this);
-        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.I).on('down', function (key, event) {
-            this.reinit();
-        }, this);
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P).on('down', function (key, event) {
             this.intensity = 1;
-            //this.finale = true;
         }, this);
         // end remove this
 
@@ -882,12 +1008,12 @@ class Play extends Phaser.Scene {
         let field_mask = field_mask_shape.createGeometryMask();
         this.field_graphics.setMask(field_mask);
 
-        this.finale_container = this.add.container(F(210) - 0.5, F(100)).setAlpha(0);
-        let finale_piece = this.add.rexRoundRectangle(0, 0, F(312), H - F(203), { tl: 0, tr: 0, bl: F(10), br: F(10) }, 0xffffff).setOrigin(0.5, 0).setPostPipeline(FinaleFX);
+        this.finale_container = this.add.container(F(210) - 0.5, F(448)).setAlpha(0);
+        let finale_piece = this.add.rexRoundRectangle(0, 0, F(312), H - F(203), { tl: 0, tr: 0, bl: F(10), br: F(10) }, 0xffffff).setOrigin(0.5).setPostPipeline(FinaleFX);
         this.finale_pipeline = finale_piece.getPostPipeline(FinaleFX);
         this.finale_container.add(finale_piece);
-        this.finale_container.add(this.add.text(F(5), F(300), 'FINALE', { font: `${36 * FS}pt Covenant`, fill: '#ffffff', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.5));
-        this.finale_container.add(this.add.text(F(5), F(400), 'BONUS', { font: `${24 * FS}pt Covenant`, fill: '#ffffff', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.5));
+        this.finale_container.add(this.add.text(F(5), F(-100), 'FINALE', { font: `${36 * FS}pt Covenant`, fill: '#ffffff', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.5));
+        this.finale_container.add(this.add.text(F(5), F(50), 'BONUS', { font: `${24 * FS}pt Covenant`, fill: '#ffffff', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.5));
 
         this.flashes = [];
         for (let i = 0; i < 4; i++) {
@@ -1002,15 +1128,159 @@ class Play extends Phaser.Scene {
             this.add.text(F(210), H - F(300), 'good', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0),
             this.add.text(F(210), H - F(300), 'slow down...', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0)
         ]
+        this.combo_text = this.add.text(F(210), F(470), 'COMBO', { font: `${12 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5).setAlpha(0);
+
+        this.combo_break_text = this.add.text(F(210), F(500), 'COMBO BREAK', { font: `${24 * FS}pt Covenant`, fill: '#ffbf00' }).setOrigin(0.5).setScale(0);
+
         this.finale_rect = this.add.rectangle(0, 0, W, H, 0xffffff).setOrigin(0).setPostPipeline(FinaleFX);
-        this.finale_rect.getPostPipeline(FinaleFX).saturation = 0.4;
-        this.convergence = this.add.text(W / 2, H / 2 - F(20), 'CONVERGENCE', { font: `${128 * FS}pt Thaleah`, fill: '#ff9cf3', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.495, 0.7).setAlpha(0);
+        this.finale_rect_pipeline = this.finale_rect.getPostPipeline(FinaleFX);
+        this.finale_rect_pipeline.saturation = 0.4;
+
+        this.convergence = this.add.text(W / 2, H / 2, 'CONVERGENCE', { font: `${128 * FS}pt Thaleah`, fill: '#ff9cf3', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.495, 0.7).setAlpha(0);
         this.old_words = Array(4).fill('');
+
+        this.ending_graphics = this.add.graphics();
+
+        this.ending_draw = [false, false, false];
+        this.ending_texts = [
+            this.add.text(F(400), F(300), 'Value', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(1, 0.5),
+            this.add.text(F(400), F(300 + 1 * 170), 'Score', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(1, 0.5),
+            this.add.text(F(400), F(300 + 2 * 170), 'Max Combo', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(1, 0.5),
+            this.add.text(W / 2, F(790), 'Z to play again', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5)
+        ]
+        this.ending_rotations = [Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2];
+
+
         this.reinit();
         this.loading_text.destroy();
     }
 
     update(time, delta) {
+        if (this.end_screen) {
+            this.ending_graphics.clear();
+            this.ending_graphics.lineStyle(3, 0xf23af2);
+            if (this.ending_draw[0]) {
+                this.ending_graphics.lineStyle(2, 0xf23af2);
+                this.ending_graphics.fillStyle(0xf23af2);
+                let y = F(300);
+                for (let i = 0; i < 4; i++) {
+                    let r = 40 + i * 20;
+                    let x = F(600);
+                    // ok this is the wrong vertex but by this point all the vertices should have converged within random error
+                    let digits = balanced_ternary(this.moves[0].simplex[0][0][i], 8);
+                    let width = 0.4 * (50 / r);
+                    this.ending_rotations[i] += delta * 0.0005 * [7, 5, 3, 2][i];
+                    let start = this.ending_rotations[i];
+                    this.ending_graphics.beginPath();
+                    this.ending_graphics.arc(x, y, r, start, start + digits.length * width);
+                    this.ending_graphics.strokePath();
+                    for (let j = 0; j < digits.length; j++) {
+                        let cur_theta = start + width * (j + 0.5);
+                        switch (digits[j]) {
+                            case -1:
+                                this.ending_graphics.lineBetween(x + Math.cos(cur_theta) * F(r), y + Math.sin(cur_theta) * F(r), x + Math.cos(cur_theta) * F(r - 9), y + Math.sin(cur_theta) * F(r - 9));
+                                break;
+                            case 0:
+                                this.ending_graphics.strokeCircle(x + Math.cos(cur_theta) * F(r), y + Math.sin(cur_theta) * F(r), F(7));
+                                break;
+                            case 1:
+                                this.ending_graphics.lineBetween(x + Math.cos(cur_theta) * F(r), y + Math.sin(cur_theta) * F(r), x + Math.cos(cur_theta) * F(r + 9), y + Math.sin(cur_theta) * F(r + 9));
+                                break;
+                            case 2:
+                                this.ending_graphics.beginPath();
+                                this.ending_graphics.moveTo(x + Math.cos(cur_theta) * F(r - 6), y + Math.sin(cur_theta) * F(r - 6));
+                                this.ending_graphics.lineTo(x + Math.cos(cur_theta) * F(r) - Math.sin(cur_theta) * F(6), y + Math.sin(cur_theta) * F(r) + Math.cos(cur_theta) * F(6));
+                                this.ending_graphics.lineTo(x + Math.cos(cur_theta) * F(r + 6), y + Math.sin(cur_theta) * F(r + 6));
+                                this.ending_graphics.lineTo(x + Math.cos(cur_theta) * F(r) + Math.sin(cur_theta) * F(6), y + Math.sin(cur_theta) * F(r) - Math.cos(cur_theta) * F(6));
+                                this.ending_graphics.closePath();
+                                this.ending_graphics.fillPath();
+                                break;
+                        }
+                    }
+                }
+
+                this.ending_graphics.lineBetween(F(800 - 25), y - F(10), F(800 - 25), y + F(10));
+                this.ending_graphics.lineBetween(F(800 - 25), y, F(800 + 25), y);
+                this.ending_graphics.lineBetween(F(800 + 15), y - F(10), F(800 + 25), y);
+                this.ending_graphics.lineBetween(F(800 + 15), y + F(10), F(800 + 25), y);
+                // draw f1
+                {
+                    let x = F(1000);
+                    let digits = balanced_ternary(this.moves[0].f_simplex[0], 7);
+                    let width = 20;
+                    let start = -width / 2 * (digits.length - 1);
+                    this.ending_graphics.lineBetween(x - F(digits.length * width / 2 + width / 2), y, x + F(digits.length * width / 2 + width / 2), y);
+                    for (let j = 0; j < digits.length; j++) {
+                        switch (digits[j]) {
+                            case -1:
+                                this.ending_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y + F(width));
+                                break;
+                            case 0:
+                                this.ending_graphics.strokeCircle(x + F(start + width * j), y, F(width * 0.375));
+                                break;
+                            case 1:
+                                this.ending_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y - F(width));
+                                break;
+                            case 2:
+                                this.ending_graphics.beginPath();
+                                this.ending_graphics.moveTo(x + F(start + width * j) - F(width / 3), y);
+                                this.ending_graphics.lineTo(x + F(start + width * j), y - F(width / 3));
+                                this.ending_graphics.lineTo(x + F(start + width * j) + F(width / 3), y);
+                                this.ending_graphics.lineTo(x + F(start + width * j), y + F(width / 3));
+                                this.ending_graphics.closePath();
+                                this.ending_graphics.fillPath();
+                                break;
+                        }
+                    }
+                }
+            }
+            if (this.ending_draw[1]) {
+                this.ending_graphics.lineStyle(3, 0xffff00);
+                let x = F(800);
+                let y = F(300 + 1 * 170);
+                let digits = balanced_ternary(this.score, 0);
+                let width = 50;
+                let start = -width / 2 * (digits.length - 1);
+                this.ending_graphics.lineBetween(x - F(digits.length * width / 2 + width / 2), y, x + F(digits.length * width / 2 + width / 2), y);
+                for (let j = 0; j < digits.length; j++) {
+                    switch (digits[j]) {
+                        case -1:
+                            this.ending_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y + F(width));
+                            break;
+                        case 0:
+                            this.ending_graphics.strokeCircle(x + F(start + width * j), y, F(width * 0.375));
+                            break;
+                        case 1:
+                            this.ending_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y - F(width));
+                            break;
+                    }
+                }
+            }
+            if (this.ending_draw[2]) {
+                this.ending_graphics.lineStyle(3, 0xffffff);
+                let x = F(800);
+                let y = F(300 + 2 * 170);
+                let digits = balanced_ternary(this.max_combo, 0);
+                let width = 50;
+                let start = -width / 2 * (digits.length - 1);
+                this.ending_graphics.lineBetween(x - F(digits.length * width / 2 + width / 2), y, x + F(digits.length * width / 2 + width / 2), y);
+                for (let j = 0; j < digits.length; j++) {
+                    switch (digits[j]) {
+                        case -1:
+                            this.ending_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y + F(width));
+                            break;
+                        case 0:
+                            this.ending_graphics.strokeCircle(x + F(start + width * j), y, F(width * 0.375));
+                            break;
+                        case 1:
+                            this.ending_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y - F(width));
+                            break;
+                    }
+                }
+            }
+            return;
+        }
+
         if (!this.finale && !this.is_warning && this.intensity > 0.9) {
             this.is_warning = true;
             this.cameras.main.zoom = 1.03;
@@ -1018,7 +1288,7 @@ class Play extends Phaser.Scene {
                 targets: this.cameras.main,
                 zoom: 1,
                 loop: -1,
-                duration: 500,
+                duration: 1000,
                 ease: 'Sine.easeOut',
             });
             this.warning.setAlpha(1);
@@ -1184,10 +1454,111 @@ class Play extends Phaser.Scene {
                 }
             }
         }
+        this.misc_graphics.lineStyle(2, 0xffffff);
+        // draw max combo
+        {
+            let x = W - F(100);
+            let y = H - F(75);
+            let digits = balanced_ternary(this.max_combo, 0);
+            let width = 15;
+            let start = -width / 2 * (digits.length - 1);
+            this.misc_graphics.lineBetween(x - F(digits.length * width / 2 + width / 2), y, x + F(digits.length * width / 2 + width / 2), y);
+            for (let j = 0; j < digits.length; j++) {
+                switch (digits[j]) {
+                    case -1:
+                        this.misc_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y + F(15));
+                        break;
+                    case 0:
+                        this.misc_graphics.strokeCircle(x + F(start + width * j), y, F(5));
+                        break;
+                    case 1:
+                        this.misc_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y - F(15));
+                        break;
+                }
+            }
+        }
+        // draw cur combo
+        {
+            if (!this.finale && this.cur_combo > 1) {
+                let x = F(210);
+                let y = F(500);
+                let digits = balanced_ternary(this.cur_combo, 0);
+                let width = 15;
+                let start = -width / 2 * (digits.length - 1);
+                this.misc_graphics.lineBetween(x - F(digits.length * width / 2 + width / 2), y, x + F(digits.length * width / 2 + width / 2), y);
+                for (let j = 0; j < digits.length; j++) {
+                    switch (digits[j]) {
+                        case -1:
+                            this.misc_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y + F(15));
+                            break;
+                        case 0:
+                            this.misc_graphics.strokeCircle(x + F(start + width * j), y, F(5));
+                            break;
+                        case 1:
+                            this.misc_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y - F(15));
+                            break;
+                    }
+                }
+            }
+        }
+        /*this.misc_graphics.lineStyle(2, 0xffff00);
+        // draw gained points
+        {
+            if (!this.finale && this.draw_points > 0) {
+                let x = F(210);
+                let y = F(360);
+                let digits = balanced_ternary(this.draw_points, 0);
+                let width = 15;
+                let start = -width / 2 * (digits.length - 1);
+                this.misc_graphics.lineBetween(x + F(start - 23), y, x + F(start - 37), y);
+                this.misc_graphics.lineBetween(x + F(start - 30), y + F(7), x + F(start - 30), y - F(7));
+
+                this.misc_graphics.lineBetween(x - F(digits.length * width / 2 + width / 2), y, x + F(digits.length * width / 2 + width / 2), y);
+                for (let j = 0; j < digits.length; j++) {
+                    switch (digits[j]) {
+                        case -1:
+                            this.misc_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y + F(15));
+                            break;
+                        case 0:
+                            this.misc_graphics.strokeCircle(x + F(start + width * j), y, F(5));
+                            break;
+                        case 1:
+                            this.misc_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y - F(15));
+                            break;
+                    }
+                }
+            }
+        }
+        // draw mult
+        {
+            if (!this.finale && this.draw_mult > 1) {
+                let x = F(210);
+                let y = F(400);
+                let digits = balanced_ternary(this.draw_mult, 0);
+                let width = 15;
+                let start = -width / 2 * (digits.length - 1);
+                this.misc_graphics.lineBetween(x + F(start - 23), y + F(7), x + F(start - 37), y - F(7));
+                this.misc_graphics.lineBetween(x + F(start - 23), y - F(7), x + F(start - 37), y + F(7));
+
+                this.misc_graphics.lineBetween(x - F(digits.length * width / 2 + width / 2), y, x + F(digits.length * width / 2 + width / 2), y);
+                for (let j = 0; j < digits.length; j++) {
+                    switch (digits[j]) {
+                        case -1:
+                            this.misc_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y + F(15));
+                            break;
+                        case 0:
+                            this.misc_graphics.strokeCircle(x + F(start + width * j), y, F(5));
+                            break;
+                        case 1:
+                            this.misc_graphics.lineBetween(x + F(start + width * j), y, x + F(start + width * j), y - F(15));
+                            break;
+                    }
+                }
+            }
+        }*/
         // draw finale bonus
         if (this.finale) {
             this.finale_bonus_draw += 0.01 * delta * (this.finale_bonus - this.finale_bonus_draw);
-            this.misc_graphics.lineStyle(3, 0xffffff);
             {
                 let x = F(210);
                 let y = F(550);
@@ -1212,7 +1583,7 @@ class Play extends Phaser.Scene {
                     }
                 }
                 {
-                    this.misc_graphics.lineStyle(3, 0xffffff);
+                    this.misc_graphics.lineStyle(3, 0xeeee00);
                     this.misc_graphics.lineBetween(x - F(digits.length * width / 2 + width / 2), y, x + F(digits.length * width / 2 + width / 2), y);
                     for (let j = 0; j < digits.length; j++) {
                         switch (digits[j]) {
