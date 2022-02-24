@@ -384,16 +384,127 @@ class Title extends Phaser.Scene {
         super({ key: 'Title' });
     }
     create() {
-        this.add.text(W / 2, H / 2 - F(200), 'POLYTOPE', { font: `${176 * FS}pt Thaleah`, fill: '#ff9cf3' }).setOrigin(0.5);
-        this.add.text(W / 2, H / 2 + F(200), 'CLICK TO BEGIN', { font: `${48 * FS}pt Covenant`, fill: '#FFFFFF' }).setOrigin(0.5);
+        this.background_graphics = this.add.graphics();
         this.input.once('pointerdown', function () {
             this.scene.start('Play');
         }, this);
-        this.background_graphics = this.add.graphics();
+        this.background_rotations = [];
+        for (let i = 0; i < 5; i++) {
+            this.background_rotations.push(Math.random() * Math.PI * 2000);
+        }
+        // regular origin-centered 5-cell
+        this.vertices_orig = [
+            new THREE.Vector4(1 / Math.sqrt(10), 1 / Math.sqrt(6), 1 / Math.sqrt(3), 1),
+            new THREE.Vector4(1 / Math.sqrt(10), 1 / Math.sqrt(6), 1 / Math.sqrt(3), -1),
+            new THREE.Vector4(1 / Math.sqrt(10), 1 / Math.sqrt(6), -2 / Math.sqrt(3), 0),
+            new THREE.Vector4(1 / Math.sqrt(10), -Math.sqrt(3 / 2), 0, 0),
+            new THREE.Vector4(-2 * Math.sqrt(2 / 5), 0, 0, 0)
+        ];
+        this.vertices = [
+            new THREE.Vector4(),
+            new THREE.Vector4(),
+            new THREE.Vector4(),
+            new THREE.Vector4(),
+            new THREE.Vector4()
+        ];
+        this.colors = [0x7f3f3f, 0x727f3f, 0x3f7f59, 0x3f597f, 0x723f7f];
+        this.vertices_draw = [];
+        for (let i = 0; i < 5; i++) {
+            this.vertices_draw.push(this.add.circle(0, 0, F(20), this.colors[i]));
+        }
+        this.theta = Math.random() * Math.PI * 2;
+        this.r1 = new THREE.Matrix4();
+        this.r2 = new THREE.Matrix4();
+        this.r3 = new THREE.Matrix4();
+        this.r4 = new THREE.Matrix4();
+
+        this.add.text(W / 2, H / 2 - F(200), 'POLYTOPE', { font: `${176 * FS}pt Thaleah`, fill: '#ff9cf3' }).setOrigin(0.5);
+        this.add.text(W / 2, H / 2 + F(200), 'CLICK TO BEGIN', { font: `${48 * FS}pt Covenant`, fill: '#FFFFFF' }).setOrigin(0.5);
     }
     update(time, delta) {
         background_ctx.fillRect(0, 0, 960, 720);
         this.background_graphics.clear();
+        this.background_graphics.lineStyle(3, 0x3f3f3f);
+        this.background_graphics.fillStyle(0x3f3f3f);
+        // drawing random values that look vaguely good
+        for (let i = 0; i < 5; i++) {
+            let r = 200 + i * 50;
+            let x = W / 2;
+            let y = H / 2;
+            let digits = balanced_ternary(this.background_rotations[i] / 200, 7);
+            let width = 1.2 * (50 / r);
+            let size = 20;
+            this.background_rotations[i] += delta * 0.0002 * [6, 4.5, 3, 1.5, 1][i];
+            let start = this.background_rotations[i] - (digits.length * width) / 2;
+            this.background_graphics.beginPath();
+            this.background_graphics.arc(x, y, r, start, start + digits.length * width);
+            this.background_graphics.strokePath();
+            for (let j = 0; j < digits.length; j++) {
+                let cur_theta = start + width * (j + 0.5);
+                switch (digits[j]) {
+                    case -1:
+                        this.background_graphics.lineBetween(x + Math.cos(cur_theta) * F(r), y + Math.sin(cur_theta) * F(r), x + Math.cos(cur_theta) * F(r - size), y + Math.sin(cur_theta) * F(r - size));
+                        break;
+                    case 0:
+                        this.background_graphics.strokeCircle(x + Math.cos(cur_theta) * F(r), y + Math.sin(cur_theta) * F(r), F(size));
+                        break;
+                    case 1:
+                        this.background_graphics.lineBetween(x + Math.cos(cur_theta) * F(r), y + Math.sin(cur_theta) * F(r), x + Math.cos(cur_theta) * F(r + size), y + Math.sin(cur_theta) * F(r + size));
+                        break;
+                    case 2:
+                        this.background_graphics.beginPath();
+                        this.background_graphics.moveTo(x + Math.cos(cur_theta) * F(r - 6), y + Math.sin(cur_theta) * F(r - 6));
+                        this.background_graphics.lineTo(x + Math.cos(cur_theta) * F(r) - Math.sin(cur_theta) * F(6), y + Math.sin(cur_theta) * F(r) + Math.cos(cur_theta) * F(6));
+                        this.background_graphics.lineTo(x + Math.cos(cur_theta) * F(r + 6), y + Math.sin(cur_theta) * F(r + 6));
+                        this.background_graphics.lineTo(x + Math.cos(cur_theta) * F(r) + Math.sin(cur_theta) * F(6), y + Math.sin(cur_theta) * F(r) - Math.cos(cur_theta) * F(6));
+                        this.background_graphics.closePath();
+                        this.background_graphics.fillPath();
+                        break;
+                }
+            }
+        }
+        this.theta += 0.0005 * delta;
+
+        this.r1.set(
+            cos(this.theta), -sin(this.theta), 0, 0,
+            sin(this.theta), cos(this.theta), 0, 0,
+            0, 0, cos(this.theta), -sin(this.theta),
+            0, 0, sin(this.theta), cos(this.theta)
+        );
+        this.r2.set(
+            cos(this.theta), 0, sin(this.theta), 0,
+            0, cos(this.theta), 0, -sin(this.theta),
+            -sin(this.theta), 0, cos(this.theta), 0,
+            0, sin(this.theta), 0, cos(this.theta),
+        );
+        this.r3.set(
+            1, 0, 0, 0,
+            0, cos(this.theta), sin(this.theta), 0,
+            0, -sin(this.theta), cos(this.theta), 0,
+            0, 0, 0, 1,
+        );
+        this.r4.set(
+            cos(this.theta), -sin(this.theta), 0, 0,
+            sin(this.theta), cos(this.theta), 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1,
+        );
+        this.r1.multiply(this.r2);
+        this.r1.multiply(this.r3);
+        this.r1.multiply(this.r4);
+        for (let i = 0; i < 5; i++) {
+            this.vertices[i].copy(this.vertices_orig[i]);
+            this.vertices[i].applyMatrix4(this.r1);
+            this.vertices_draw[i].setPosition(W / 2 + F(300) * this.vertices[i].x, H / 2 + F(300) * this.vertices[i].y);
+            this.vertices_draw[i].setScale(1 + this.vertices[i].z / 2)
+        }
+        this.background_graphics.lineStyle(5, 0x5f5f5f);
+        for (let i = 0; i < 5; i++) {
+            for (let j = i + 1; j < 5; j++) {
+                this.background_graphics.lineGradientStyle(5, this.colors[i], this.colors[j], this.colors[i], this.colors[j]);
+                this.background_graphics.lineBetween(this.vertices_draw[i].x, this.vertices_draw[i].y, this.vertices_draw[j].x, this.vertices_draw[j].y);
+            }
+        }
     }
 }
 
@@ -411,7 +522,6 @@ class Play extends Phaser.Scene {
         if (line.tween) {
             line.tween.remove();
         }
-        //console.log(line)
         let prev_value = line.color_val;
         if (prev_value === undefined) {
             prev_value = 255;
@@ -516,7 +626,6 @@ class Play extends Phaser.Scene {
     }
 
     do_ending() {
-        console.log("end!");
         this.end_screen = true;
         if (this.camera_thump) {
             this.camera_thump.remove();
@@ -528,7 +637,6 @@ class Play extends Phaser.Scene {
             duration: 1000,
             ease: 'Quad.easeOut'
         });
-        // TODO: add score, fancy graphics, "play again?", etc.
         this.time.addEvent({
             delay: 1500,
             callback: () => {
@@ -648,7 +756,6 @@ class Play extends Phaser.Scene {
             if (!this.finale) {
                 this.judge(judgement, this.moves[0].mult);
                 if (judgement == 2) {
-                    // TODO: combo break sign
                     if (this.cur_combo > 1) {
                         this.combo_break();
                     }
