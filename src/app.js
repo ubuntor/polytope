@@ -95,7 +95,7 @@ background_canvas.style.zIndex = '-2';
 const background_ctx = background_canvas.getContext('2d');
 background_ctx.fillStyle = "#111111";
 
-// modified from https://www.shadertoy.com/view/XljGzV
+// modified from https://www.shadertoy.com/view/MsS3Wc
 const finale_shader = `
 #define SHADER_NAME FINALE_FS
 
@@ -107,15 +107,15 @@ uniform float uSat;
 
 varying vec2 outTexCoord;
 
-vec3 hsv2rgb(vec3 c) {
-    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+vec3 hsv2rgb_smooth( in vec3 c ) {
+    vec3 rgb = clamp( abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0, 0.0, 1.0 );
+	rgb = rgb*rgb*(3.0-2.0*rgb); // cubic smoothing
+	return c.z * mix( vec3(1.0), rgb, c.y);
 }
 
 void main() {
 	vec2 uv = outTexCoord.xy;
-    vec3 rainbow = hsv2rgb(vec3(uv.x+uv.y+uTime, uSat, 1));
+    vec3 rainbow = hsv2rgb_smooth(vec3(uv.x+uv.y+uTime, uSat, 1));
     gl_FragColor = texture2D(uMainSampler,outTexCoord) * vec4(rainbow,1.0);
 }
 `;
