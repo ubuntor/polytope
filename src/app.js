@@ -104,7 +104,6 @@ precision mediump float;
 uniform sampler2D uMainSampler;
 uniform float uTime;
 uniform float uSat;
-uniform float uValue;
 
 varying vec2 outTexCoord;
 
@@ -116,7 +115,7 @@ vec3 hsv2rgb(vec3 c) {
 
 void main() {
 	vec2 uv = outTexCoord.xy;
-    vec3 rainbow = hsv2rgb(vec3(uv.x+uv.y+uTime, uSat, uValue));
+    vec3 rainbow = hsv2rgb(vec3(uv.x+uv.y+uTime, uSat, 1));
     gl_FragColor = texture2D(uMainSampler,outTexCoord) * vec4(rainbow,1.0);
 }
 `;
@@ -130,19 +129,16 @@ class FinaleFX extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
             uniforms: [
                 'uMainSampler',
                 'uTime',
-                'uSat',
-                'uValue'
+                'uSat'
             ]
         });
         this.saturation = 0;
-        this.value = 1;
         // does this get constructed twice???
         console.log("created finale pipeline");
     }
     onPreRender() {
         this.setTime('uTime');
         this.set1f('uSat', this.saturation);
-        this.set1f('uValue', this.value);
     }
 }
 
@@ -847,10 +843,10 @@ class Play extends Phaser.Scene {
                         duration: 10000,
                         ease: 'Quint.easeIn'
                     });
-                    this.finale_rect_pipeline.value = 1;
+                    this.finale_rect_darken.setAlpha(0);
                     this.tweens.add({
-                        targets: this.finale_rect_pipeline,
-                        value: 0.3,
+                        targets: this.finale_rect_darken,
+                        alpha: 0.7,
                         delay: 12500,
                         duration: 1000,
                         ease: 'Quad.easeOut'
@@ -912,6 +908,7 @@ class Play extends Phaser.Scene {
             this.ending_texts[i].setAlpha(0);
             this.ending_draw[i] = false;
         }
+        this.finale_rect_darken.setAlpha(0);
     }
 
     create() {
@@ -1242,6 +1239,8 @@ class Play extends Phaser.Scene {
         this.finale_rect = this.add.rectangle(0, 0, W, H, 0xffffff).setOrigin(0).setPostPipeline(FinaleFX);
         this.finale_rect_pipeline = this.finale_rect.getPostPipeline(FinaleFX);
         this.finale_rect_pipeline.saturation = 0.4;
+        this.finale_rect_darken = this.add.rectangle(0, 0, W, H, 0x000000).setOrigin(0).setAlpha(0);
+
 
         this.convergence = this.add.text(W / 2, H / 2, 'CONVERGENCE', { font: `${128 * FS}pt Thaleah`, fill: '#ff9cf3', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.495, 0.7).setAlpha(0);
         this.old_words = Array(4).fill('');
