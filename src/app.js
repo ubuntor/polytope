@@ -515,6 +515,11 @@ class Play extends Phaser.Scene {
             let base = 'pluck' + i.toString();
             this.load.audio(base, [base + '.wav']);
         }
+        for (let i = 1; i <= 7; i++) {
+            let base = 'loop' + i.toString();
+            this.load.audio(base, [base + '.wav']);
+        }
+        this.load.audio('finale', ['finale.wav']);
     }
 
     set_code_color(i, is_green) {
@@ -641,48 +646,48 @@ class Play extends Phaser.Scene {
             delay: 1500,
             callback: () => {
                 this.ending_texts[0].setAlpha(1);
-                this.sound.play('pluck1');
-                this.sound.play('pluck6');
+                this.sound.play('pluck1', { volume: 0.5 });
+                this.sound.play('pluck6', { volume: 0.5 });
             }
         })
         this.time.addEvent({
             delay: 2000,
             callback: () => {
                 this.ending_draw[0] = true;
-                this.sound.play('pluck2');
-                this.sound.play('pluck7');
+                this.sound.play('pluck2', { volume: 0.5 });
+                this.sound.play('pluck7', { volume: 0.5 });
             }
         })
         this.time.addEvent({
             delay: 2500,
             callback: () => {
                 this.ending_texts[1].setAlpha(1);
-                this.sound.play('pluck3');
-                this.sound.play('pluck8');
+                this.sound.play('pluck3', { volume: 0.5 });
+                this.sound.play('pluck8', { volume: 0.5 });
             }
         })
         this.time.addEvent({
             delay: 3000,
             callback: () => {
                 this.ending_draw[1] = true;
-                this.sound.play('pluck4');
-                this.sound.play('pluck9');
+                this.sound.play('pluck4', { volume: 0.5 });
+                this.sound.play('pluck9', { volume: 0.5 });
             }
         })
         this.time.addEvent({
             delay: 3500,
             callback: () => {
                 this.ending_texts[2].setAlpha(1);
-                this.sound.play('pluck5');
-                this.sound.play('pluck10');
+                this.sound.play('pluck5', { volume: 0.5 });
+                this.sound.play('pluck10', { volume: 0.5 });
             }
         })
         this.time.addEvent({
             delay: 4000,
             callback: () => {
                 this.ending_draw[2] = true;
-                this.sound.play('pluck6');
-                this.sound.play('pluck11');
+                this.sound.play('pluck6', { volume: 0.5 });
+                this.sound.play('pluck11', { volume: 0.5 });
             }
         })
         this.time.addEvent({
@@ -859,6 +864,25 @@ class Play extends Phaser.Scene {
                         duration: 10000,
                         ease: 'Quint.easeIn'
                     });
+
+                    this.time.addEvent({
+                        delay: 6000,
+                        callback: () => {
+                            let finale_music = this.sound.play('finale', { volume: 1 });
+                            this.tweens.add({
+                                targets: finale_music,
+                                volume: 1,
+                                duration: 4000,
+                                ease: 'Linear'
+                            });
+                            this.tweens.add({
+                                targets: this.loops,
+                                volume: 0,
+                                duration: 4000,
+                                ease: 'Linear'
+                            });
+                        }
+                    });
                     this.finale_rect_darken.setAlpha(0);
                     this.tweens.add({
                         targets: this.finale_rect_darken,
@@ -871,7 +895,7 @@ class Play extends Phaser.Scene {
                 this.potential = 0;
             }
             this.color_code_lines();
-            this.sound.play('pluck' + Math.floor(1 + Math.random() * 11).toString());
+            this.sound.play('pluck' + Math.floor(1 + Math.random() * 11).toString(), { volume: 0.5 });
         } else {
             if (!this.finale) {
                 this.intensity = Math.max(this.intensity - 0.015, 0);
@@ -1273,7 +1297,16 @@ class Play extends Phaser.Scene {
         ]
         this.ending_rotations = [Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2];
 
-
+        this.loops = []
+        for (let i = 1; i <= 7; i++) {
+            let base = 'loop' + i.toString();
+            this.loops.push(this.sound.add(base));
+        }
+        for (let i = 0; i < 7; i++) {
+            this.loops[i].play(
+                { volume: 0, loop: true }
+            );
+        }
         this.reinit();
         this.loading_text.destroy();
     }
@@ -1914,6 +1947,12 @@ class Play extends Phaser.Scene {
         let intensity_mask_target = (1 - this.intensity) * (H - F(200) - 2);
         this.intensity_mask.height += (intensity_mask_target - this.intensity_mask.height) * 0.01 * delta;
         this.potential_mask.height = (1 - this.potential) * (H - F(700) - 2);
+
+        if (!this.finale) {
+            for (let i = 0; i < 7; i++) {
+                this.loops[i].setVolume(Math.max(0, Math.min(1, this.intensity * 7 - i)));
+            }
+        }
 
         this.wikipedia_y = (this.wikipedia_y - delta * R2 * (0.01 + 0.19 * Math.pow(this.intensity, 4))) % (this.wikipedia.height + F(100));
         this.wikipedia.y = this.wikipedia_y - F(5) + (95);
