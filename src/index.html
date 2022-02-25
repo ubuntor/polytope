@@ -75,7 +75,7 @@
                                     class="delimsizing size1">)</span></span></span></span><span
                         class="mclose delimcenter" style="top:0em;"><span
                             class="delimsizing size1">)</span></span></span></span></span></span>
-    <!-- f(x,y,z,w) = -\underbrace{\left(\sin(x+y) + (x-y)^2 - 1.5x+2.5y+1\right)}_{\text{McCormick}}-\underbrace{\left(\frac{z^4 - 16z^2 + 5z + w^4 - 16w + 5w}{2}\right)}_\text{Styblinski–Tang}+\varepsilon -->
+    <!-- f(x,y,z,w) = -\underbrace{\left(\sin(x+y) + (x-y)^2 - 1.5x+2.5y+1\right)}_{\text{McCormick}}-\underbrace{\left(\frac{z^4 - 16z^2 + 5z + w^4 - 16w^2 + 5w}{2}\right)}_\text{Styblinski–Tang}+\varepsilon -->
     <span class="katex" style="left:310px;top:20px;display:none"><span class="katex-mathml"><math
                 xmlns="http://www.w3.org/1998/Math/MathML">
                 <semantics>
@@ -153,7 +153,10 @@
                                             </msup>
                                             <mo>−</mo>
                                             <mn>16</mn>
-                                            <mi>w</mi>
+                                            <msup>
+                                                <mi>w</mi>
+                                                <mn>2</mn>
+                                            </msup>
                                             <mo>+</mo>
                                             <mn>5</mn>
                                             <mi>w</mi>
@@ -170,7 +173,7 @@
                         <mi>ε</mi>
                     </mrow>
                     <annotation encoding="application/x-tex">f(x,y,z,w) = -\underbrace{\left(\sin(x+y) + (x-y)^2 -
-                        1.5x+2.5y+1\right)}_{\text{McCormick}}-\underbrace{\left(\frac{z^4 - 16z^2 + 5z + w^4 - 16w +
+                        1.5x+2.5y+1\right)}_{\text{McCormick}}-\underbrace{\left(\frac{z^4 - 16z^2 + 5z + w^4 - 16w^2 +
                         5w}{2}\right)}_\text{Styblinski–Tang}+\varepsilon
                     </annotation>
                 </semantics>
@@ -410,8 +413,19 @@
                                                                                                 class="mspace"
                                                                                                 style="margin-right:0.2222em;"></span><span
                                                                                                 class="mord">16</span><span
-                                                                                                class="mord mathnormal"
-                                                                                                style="margin-right:0.02691em;">w</span><span
+                                                                                                class="mord"><span
+                                                                                                    class="mord mathnormal"
+                                                                                                    style="margin-right:0.02691em;">w</span><span
+                                                                                                    class="msupsub"><span
+                                                                                                        class="vlist-t"><span
+                                                                                                            class="vlist-r"><span
+                                                                                                                class="vlist"
+                                                                                                                style="height:0.8141em;"><span
+                                                                                                                    style="top:-3.063em;margin-right:0.05em;"><span
+                                                                                                                        class="pstrut"
+                                                                                                                        style="height:2.7em;"></span><span
+                                                                                                                        class="sizing reset-size6 size3 mtight"><span
+                                                                                                                            class="mord mtight">2</span></span></span></span></span></span></span></span><span
                                                                                                 class="mspace"
                                                                                                 style="margin-right:0.2222em;"></span><span
                                                                                                 class="mbin">+</span><span
