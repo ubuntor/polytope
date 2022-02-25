@@ -694,6 +694,11 @@ class Play extends Phaser.Scene {
             delay: 5000,
             callback: () => {
                 this.ending_texts[3].setAlpha(1);
+                this.sound.play('pluck1', { volume: 0.5 });
+                this.sound.play('pluck3', { volume: 0.5 });
+                this.sound.play('pluck4', { volume: 0.5 });
+                this.sound.play('pluck6', { volume: 0.5 });
+                this.sound.play('pluck11', { volume: 0.5 });
                 this.is_replayable = true;
             }
         })
@@ -832,8 +837,8 @@ class Play extends Phaser.Scene {
                     this.tweens.add({
                         targets: this.convergence,
                         alpha: 1,
-                        duration: 12000,
-                        ease: 'Quint.easeIn',
+                        duration: 7000,
+                        ease: 'Quad.easeOut',
                         onComplete: function (tween, targets, scene) {
                             scene.do_ending();
                         },
@@ -842,7 +847,7 @@ class Play extends Phaser.Scene {
                     this.tweens.add({
                         targets: this.convergence,
                         scale: 1,
-                        duration: 12000,
+                        duration: 7000,
                         ease: 'Quad.easeOut',
                     });
                     this.tweens.add({
@@ -861,33 +866,41 @@ class Play extends Phaser.Scene {
                         targets: this.finale_rect,
                         alpha: 1,
                         delay: 2000,
-                        duration: 10000,
+                        duration: 5000,
                         ease: 'Quint.easeIn'
                     });
 
-                    this.time.addEvent({
+                    /*this.time.addEvent({
                         delay: 6000,
                         callback: () => {
-                            let finale_music = this.sound.play('finale', { volume: 1 });
+                            let finale_music = this.sound.play('finale', { volume: 0.1 });
                             this.tweens.add({
                                 targets: finale_music,
                                 volume: 1,
-                                duration: 4000,
-                                ease: 'Linear'
-                            });
-                            this.tweens.add({
-                                targets: this.loops,
-                                volume: 0,
-                                duration: 4000,
+                                duration: 500,
                                 ease: 'Linear'
                             });
                         }
+                    });*/
+                    let finale_music = this.sound.add('finale', { volume: 0 });
+                    finale_music.play();
+                    this.tweens.add({
+                        targets: finale_music,
+                        volume: 1,
+                        duration: 5000,
+                        ease: 'Linear'
+                    });
+                    this.tweens.add({
+                        targets: this.loops,
+                        volume: 0,
+                        duration: 1000,
+                        ease: 'Linear'
                     });
                     this.finale_rect_darken.setAlpha(0);
                     this.tweens.add({
                         targets: this.finale_rect_darken,
                         alpha: 0.7,
-                        delay: 12500,
+                        delay: 7500,
                         duration: 1000,
                         ease: 'Quad.easeOut'
                     });
