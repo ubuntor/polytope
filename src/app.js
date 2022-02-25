@@ -509,8 +509,12 @@ class Play extends Phaser.Scene {
         super({ key: 'Play' });
     }
     async preload() {
-        this.load.plugin('rexroundrectangleplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/8b4ad8083e48019f39b37d8f629379851ca8ec13/dist/rexroundrectangleplugin.min.js', true);
         this.loading_text = this.add.text(W / 2, H / 2, 'loading...', { font: `${48 * FS}pt Covenant`, fill: '#FFFFFF' }).setOrigin(0.5);
+        this.load.plugin('rexroundrectangleplugin', 'https://raw.githubusercontent.com/rexrainbow/phaser3-rex-notes/8b4ad8083e48019f39b37d8f629379851ca8ec13/dist/rexroundrectangleplugin.min.js', true);
+        for (let i = 1; i <= 11; i++) {
+            let base = 'pluck' + i.toString();
+            this.load.audio(base, [base + '.wav']);
+        }
     }
 
     set_code_color(i, is_green) {
@@ -637,36 +641,48 @@ class Play extends Phaser.Scene {
             delay: 1500,
             callback: () => {
                 this.ending_texts[0].setAlpha(1);
+                this.sound.play('pluck1');
+                this.sound.play('pluck6');
             }
         })
         this.time.addEvent({
             delay: 2000,
             callback: () => {
                 this.ending_draw[0] = true;
+                this.sound.play('pluck2');
+                this.sound.play('pluck7');
             }
         })
         this.time.addEvent({
             delay: 2500,
             callback: () => {
                 this.ending_texts[1].setAlpha(1);
+                this.sound.play('pluck3');
+                this.sound.play('pluck8');
             }
         })
         this.time.addEvent({
             delay: 3000,
             callback: () => {
                 this.ending_draw[1] = true;
+                this.sound.play('pluck4');
+                this.sound.play('pluck9');
             }
         })
         this.time.addEvent({
             delay: 3500,
             callback: () => {
                 this.ending_texts[2].setAlpha(1);
+                this.sound.play('pluck5');
+                this.sound.play('pluck10');
             }
         })
         this.time.addEvent({
             delay: 4000,
             callback: () => {
                 this.ending_draw[2] = true;
+                this.sound.play('pluck6');
+                this.sound.play('pluck11');
             }
         })
         this.time.addEvent({
@@ -855,6 +871,7 @@ class Play extends Phaser.Scene {
                 this.potential = 0;
             }
             this.color_code_lines();
+            this.sound.play('pluck' + Math.floor(1 + Math.random() * 11).toString());
         } else {
             if (!this.finale) {
                 this.intensity = Math.max(this.intensity - 0.015, 0);
