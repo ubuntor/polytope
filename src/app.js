@@ -691,12 +691,13 @@ class Play extends Phaser.Scene {
         this.time.addEvent({
             delay: 5000,
             callback: () => {
+                // why are these sound delays in seconds instead of milliseconds?
                 this.ending_texts[3].setAlpha(1);
                 this.sound.play('pluck1', { volume: 0.5 });
-                this.sound.play('pluck3', { volume: 0.5 });
-                this.sound.play('pluck4', { volume: 0.5 });
-                this.sound.play('pluck6', { volume: 0.5 });
-                this.sound.play('pluck11', { volume: 0.5 });
+                this.sound.play('pluck3', { volume: 0.5, delay: 0.03 });
+                this.sound.play('pluck4', { volume: 0.5, delay: 0.06 });
+                this.sound.play('pluck6', { volume: 0.5, delay: 0.09 });
+                this.sound.play('pluck11', { volume: 0.5, delay: 0.12 });
                 this.is_replayable = true;
             }
         })
@@ -867,19 +868,6 @@ class Play extends Phaser.Scene {
                         duration: 5000,
                         ease: 'Quint.easeIn'
                     });
-
-                    /*this.time.addEvent({
-                        delay: 6000,
-                        callback: () => {
-                            let finale_music = this.sound.play('finale', { volume: 0.1 });
-                            this.tweens.add({
-                                targets: finale_music,
-                                volume: 1,
-                                duration: 500,
-                                ease: 'Linear'
-                            });
-                        }
-                    });*/
                     let finale_music = this.sound.add('finale', { volume: 0 });
                     finale_music.play();
                     this.tweens.add({
