@@ -204,6 +204,8 @@ function next_state(f, simplex_orig) {
     let move;
     let simplex = [...simplex_orig];
     let f_simplex = Array(N + 1);
+    // nudge vertices randomly to prevent simplex from shrinking too much
+    // and messing up 3d visuals due to floating-point precision
     for (let i = 0; i < N + 1; i++) {
         simplex[i][0] = vec_nudge(simplex[i][0]);
         f_simplex[simplex[i][1]] = f(simplex[i][0]);
@@ -371,10 +373,6 @@ function v_smooth(src, target, delta) {
         src.z + (target.z - src.z) * delta);
 }
 
-function s_smooth(src, target, delta) {
-    src.setScalar(src.x + (target - src.x) * delta);
-}
-
 class Title extends Phaser.Scene {
     constructor() {
         super({ key: 'Title' });
@@ -385,7 +383,7 @@ class Title extends Phaser.Scene {
             this.scene.start('Play');
         }, this);
         this.background_rotations = [];
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 9; i++) {
             this.background_rotations.push(Math.random() * Math.PI * 2000);
         }
         // regular origin-centered 5-cell
@@ -414,8 +412,8 @@ class Title extends Phaser.Scene {
         this.r3 = new THREE.Matrix4();
         this.r4 = new THREE.Matrix4();
 
-        this.add.text(W / 2, H / 2 - F(200), 'POLYTOPE', { font: `${176 * FS}pt Thaleah`, fill: '#ff9cf3' }).setOrigin(0.5);
-        this.add.text(W / 2, H / 2 + F(200), 'CLICK TO BEGIN', { font: `${48 * FS}pt Covenant`, fill: '#FFFFFF' }).setOrigin(0.5);
+        this.add.text(W / 2, H / 2 - F(200), 'POLYTOPE', { font: `${F(176)}pt Thaleah`, fill: '#ff9cf3' }).setOrigin(0.5);
+        this.add.text(W / 2, H / 2 + F(200), 'CLICK TO BEGIN', { font: `${F(48)}pt Covenant`, fill: '#FFFFFF' }).setOrigin(0.5);
     }
     update(time, delta) {
         background_ctx.fillRect(0, 0, 960, 720);
@@ -423,17 +421,17 @@ class Title extends Phaser.Scene {
         this.background_graphics.lineStyle(3, 0x3f3f3f);
         this.background_graphics.fillStyle(0x3f3f3f);
         // drawing random values that look vaguely good
-        for (let i = 0; i < 5; i++) {
-            let r = 200 + i * 50;
+        for (let i = 0; i < 9; i++) {
+            let r = 150 + i * 50;
             let x = W / 2;
             let y = H / 2;
             let digits = balanced_ternary(this.background_rotations[i] / 200, 7);
             let width = 1.2 * (50 / r);
             let size = 20;
-            this.background_rotations[i] += delta * 0.0002 * [6, 4.5, 3, 1.5, 1][i];
+            this.background_rotations[i] += delta * 0.0002 * (9 - i);
             let start = this.background_rotations[i] - (digits.length * width) / 2;
             this.background_graphics.beginPath();
-            this.background_graphics.arc(x, y, r, start, start + digits.length * width);
+            this.background_graphics.arc(x, y, F(r), start, start + digits.length * width);
             this.background_graphics.strokePath();
             for (let j = 0; j < digits.length; j++) {
                 let cur_theta = start + width * (j + 0.5);
@@ -811,7 +809,7 @@ class Play extends Phaser.Scene {
                 this.moves = this.moves.concat(this.gen.next().value);
             }
             if (!this.finale) {
-                this.intensity += 0.01 * this.potential;
+                this.intensity += 0.008 * this.potential;
                 if (this.intensity > 1) {
                     // finale!
                     this.finale = true;
@@ -934,6 +932,7 @@ class Play extends Phaser.Scene {
         this.range_draw = 0;
         this.mean_draw = 0;
         this.intensity = 0;
+        this.intensity_smooth = 0;
         this.wikipedia_y = 0;
         this.potential = 1;
         this.is_warning = false;
@@ -1182,7 +1181,7 @@ class Play extends Phaser.Scene {
 
         this.text_particles = [];
         for (let i = 0; i < NUM_TEXT_PARTICLES; i++) {
-            this.text_particles.push(this.add.text(W / 2, H / 2, 'TEXT', { font: `${192 * FS}pt Covenant`, fill: '#ff9cf340', stroke: '#ff9cf3', strokeThickness: 4 }).setOrigin(0.5).setAlpha(0))
+            this.text_particles.push(this.add.text(W / 2, H / 2, 'TEXT', { font: `${192 * FS}pt Covenant`, fill: '#ff9cf380', stroke: '#ff9cf3', strokeThickness: 4 }).setOrigin(0.5).setAlpha(0))
         }
 
         this.add.text(F(960), H - F(160), 'f1', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5);
@@ -1200,7 +1199,7 @@ class Play extends Phaser.Scene {
             this.add.text(F(690), H - F(60), 'fic', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(0.5)
         ];
         this.f_misc_draw = Array(4).fill(0);
-        this.warning = this.add.text(F(50), H - F(400), 'WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  ', { font: `${60 * FS}pt m3x6`, fill: '#ffffff' }).setAlpha(0);
+        this.warning = this.add.text(F(50), H - F(410), 'WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  WARNING: IMMINENT FINALE  ', { font: `${F(72)}pt m3x6`, fill: '#ffffff' }).setAlpha(0);
         this.warning.setMask(field_mask);
         this.add.text(F(480), H - F(25), 'f1-f5:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
         this.add.text(F(720), H - F(25), '\u00b5:', { font: `${24 * FS}pt m3x6`, fill: '#f23af2' }).setOrigin(1, 0.5);
@@ -1320,6 +1319,16 @@ class Play extends Phaser.Scene {
                 { volume: 0, loop: true }
             );
         }
+        this.loop_thresholds = [
+            0,
+            Math.pow(1 / 7, 2),
+            Math.pow(2 / 7, 2),
+            Math.pow(3 / 7, 2),
+            Math.pow(4 / 7, 2),
+            Math.pow(5 / 7, 2),
+            Math.pow(6 / 7, 2),
+            Math.pow(6.5 / 7, 2),
+        ];
         this.reinit();
         this.loading_text.destroy();
     }
@@ -1480,7 +1489,7 @@ class Play extends Phaser.Scene {
         }
 
         background_ctx.fillRect(0, 0, 960, 720);
-        this.potential = Math.min(this.potential + 0.001 * delta * (1 + 150 * Math.pow(this.intensity, 3)), 1);
+        this.potential = Math.min(this.potential + 0.001 * delta * (1 + 100 * Math.pow(this.intensity, 2)), 1);
         if (!this.climax) {
             this.field_graphics.clear();
             this.field_graphics.lineStyle(3, 0xdddd00);
@@ -1955,15 +1964,18 @@ class Play extends Phaser.Scene {
         }
 
         if (!this.finale) {
-            this.intensity = Math.max(this.intensity - 0.00003 * this.intensity * delta, 0);
+            // intensity decay
+            this.intensity = Math.max(this.intensity - 0.000025 * this.intensity * delta, 0);
         }
-        let intensity_mask_target = (1 - this.intensity) * (H - F(200) - 2);
-        this.intensity_mask.height += (intensity_mask_target - this.intensity_mask.height) * 0.01 * delta;
+        this.intensity_smooth += (this.intensity - this.intensity_smooth) * delta * 0.005;
+        this.intensity_mask.height = (1 - this.intensity_smooth) * (H - F(200) - 2);
         this.potential_mask.height = (1 - this.potential) * (H - F(700) - 2);
 
         if (!this.finale) {
-            for (let i = 0; i < 7; i++) {
-                this.loops[i].setVolume(Math.max(0, Math.min(1, this.intensity * 7 - i)));
+            for (let i = 0; i < this.loops.length; i++) {
+                this.loops[i].setVolume((Math.max(0, Math.min(1,
+                    (this.intensity_smooth - this.loop_thresholds[i]) / (this.loop_thresholds[i + 1] - this.loop_thresholds[i])
+                ))));
             }
         }
 
