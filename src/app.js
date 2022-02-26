@@ -16,6 +16,7 @@ const R2 = R / 1.25;
 const FS = Math.round(R); // font scale
 const F = (x) => Math.floor(x * R2);
 const TRIALS = 50;
+const VOLUME_EPSILON = 0.001;
 const WIKIPEDIA = `The Nelder-Mead method (also downhill simplex method, amoeba method, or polytope method) is a commonly applied numerical method used to find the minimum or maximum of an objective function in a multidimensional space. It is a direct search method (based on function comparison) and is often applied to nonlinear optimization problems for which derivatives may not be known. However, the Nelder-Mead technique is a heuristic search method that can converge to non-stationary points on problems that can be solved by alternative methods.
 
 The Nelder-Mead technique was proposed by John Nelder and Roger Mead in 1965, as a development of the method of Spendley et al.
@@ -458,7 +459,9 @@ class Title extends Phaser.Scene {
             }
         }
         this.theta += 0.0005 * delta;
-
+        if (this.theta > Math.PI * 2) {
+            this.theta -= Math.PI * 2;
+        }
         this.r1.set(
             cos(this.theta), -sin(this.theta), 0, 0,
             sin(this.theta), cos(this.theta), 0, 0,
@@ -691,6 +694,9 @@ class Play extends Phaser.Scene {
         this.time.addEvent({
             delay: 5000,
             callback: () => {
+                for (let i = 0; i < this.loops.length; i++) {
+                    this.loops[i].destroy();
+                }
                 // why are these sound delays in seconds instead of milliseconds?
                 this.ending_texts[3].setAlpha(1);
                 this.sound.play('pluck1', { volume: 0.5 });
@@ -878,7 +884,7 @@ class Play extends Phaser.Scene {
                     });
                     this.tweens.add({
                         targets: this.loops,
-                        volume: 0,
+                        volume: VOLUME_EPSILON,
                         duration: 1000,
                         ease: 'Linear'
                     });
@@ -950,6 +956,17 @@ class Play extends Phaser.Scene {
             this.ending_draw[i] = false;
         }
         this.finale_rect_darken.setAlpha(0);
+        // hopefully this prevents the music cutting out randomly...
+        this.loops = []
+        for (let i = 1; i <= 7; i++) {
+            let base = 'loop' + i.toString();
+            this.loops.push(this.sound.add(base));
+        }
+        for (let i = 0; i < this.loops.length; i++) {
+            this.loops[i].play(
+                { volume: VOLUME_EPSILON, loop: true }
+            );
+        }
     }
 
     create() {
@@ -1296,17 +1313,7 @@ class Play extends Phaser.Scene {
             this.add.text(W / 2, F(790), 'Z to play again', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5)
         ]
         this.ending_rotations = [Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2];
-
-        this.loops = []
-        for (let i = 1; i <= 7; i++) {
-            let base = 'loop' + i.toString();
-            this.loops.push(this.sound.add(base));
-        }
-        for (let i = 0; i < 7; i++) {
-            this.loops[i].play(
-                { volume: 0, loop: true }
-            );
-        }
+        this.sound.pauseOnBlur = false;
         this.loop_thresholds = [
             0,
             Math.pow(1 / 7, 2),
@@ -1961,7 +1968,7 @@ class Play extends Phaser.Scene {
 
         if (!this.finale) {
             for (let i = 0; i < this.loops.length; i++) {
-                this.loops[i].setVolume((Math.max(0, Math.min(1,
+                this.loops[i].setVolume((Math.max(VOLUME_EPSILON, Math.min(1,
                     (this.intensity_smooth - this.loop_thresholds[i]) / (this.loop_thresholds[i + 1] - this.loop_thresholds[i])
                 ))));
             }
