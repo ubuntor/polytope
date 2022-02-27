@@ -18,7 +18,6 @@ const R2 = R / 1.25;
 const FS = Math.max(1, Math.floor(R)); // font scale
 const F = (x) => Math.floor(x * R2);
 const TRIALS = 50;
-const VOLUME_EPSILON = 0.001;
 const WIKIPEDIA = `The Nelder-Mead method (also downhill simplex method, amoeba method, or polytope method) is a commonly applied numerical method used to find the minimum or maximum of an objective function in a multidimensional space. It is a direct search method (based on function comparison) and is often applied to nonlinear optimization problems for which derivatives may not be known. However, the Nelder-Mead technique is a heuristic search method that can converge to non-stationary points on problems that can be solved by alternative methods.
 
 The Nelder-Mead technique was proposed by John Nelder and Roger Mead in 1965, as a development of the method of Spendley et al.
@@ -415,7 +414,6 @@ class Title extends Phaser.Scene {
         this.r2 = new THREE.Matrix4();
         this.r3 = new THREE.Matrix4();
         this.r4 = new THREE.Matrix4();
-        console.log(this.vertices_draw);
         this.add.text(W / 2, H / 2 - F(200), 'POLYTOPE', { font: `${F(176)}pt Thaleah`, fill: '#ff9cf3' }).setOrigin(0.5).setDepth(2);
         this.add.text(W / 2, H / 2 + F(200), 'CLICK TO BEGIN', { font: `${F(48)}pt Covenant`, fill: '#FFFFFF' }).setOrigin(0.5).setDepth(2);
         this.zstate = 0;
@@ -792,12 +790,12 @@ class Play extends Phaser.Scene {
             this.flashes[x].setAlpha(1);
             let wordlist = words[this.moves[0].move];
 
-            let old_word = this.old_words[x == 4 ? 3 : x];
+            let old_word = this.old_words[x == 3 ? 2 : x];
             let new_word = wordlist[Math.floor(Math.random() * wordlist.length)];
             while (old_word == new_word) {
                 new_word = wordlist[Math.floor(Math.random() * wordlist.length)];
             }
-            this.old_words[x == 4 ? 3 : x] = new_word;
+            this.old_words[x == 3 ? 2 : x] = new_word;
             if (this.text_particles[this.text_particle_index].tweens) {
                 this.text_particles[this.text_particle_index].tweens[0].remove();
                 this.text_particles[this.text_particle_index].tweens[1].remove();
@@ -925,7 +923,7 @@ class Play extends Phaser.Scene {
                     finale_music.play();
                     this.tweens.add({
                         targets: this.loops,
-                        volume: VOLUME_EPSILON,
+                        volume: 0,
                         duration: 1000,
                         ease: 'Linear'
                     });
@@ -1005,7 +1003,7 @@ class Play extends Phaser.Scene {
         }
         for (let i = 0; i < this.loops.length; i++) {
             this.loops[i].play(
-                { volume: VOLUME_EPSILON, loop: true }
+                { volume: 0, loop: true }
             );
         }
     }
@@ -1066,7 +1064,7 @@ class Play extends Phaser.Scene {
         mask_shape.fillRect(F(50) - 0.5 + 1, F(5) - 0.5 + 1, F(320) - 2, F(95) - 2);
         let mask = mask_shape.createGeometryMask();
         this.wikipedia = this.make.text({
-            x: F(55), y: F(-5), text: WIKIPEDIA, style: { font: `${24 * FS}pt m3x6`, fill: 'white', lineSpacing: R2 * -15, wordWrap: { width: F(320) } }
+            x: F(55), y: F(-5), text: WIKIPEDIA, style: { font: `${24 * FS}pt m3x6`, fill: 'white', lineSpacing: -(24 * FS) / 1.7, wordWrap: { width: F(320) } }
         });
         this.wikipedia.setMask(mask);
 
@@ -1185,7 +1183,6 @@ class Play extends Phaser.Scene {
         tet_geom.deleteAttribute('normal');
         tet_geom = mergeVertices(tet_geom);
         tet_geom.computeVertexNormals();
-        console.log(tet_geom);
 
         // heavily modified from https://stegu.github.io/psrdnoise/3d-gallery/wobblysphere-threejs.html
         // also tweaking to get rid of the period param
@@ -2137,14 +2134,13 @@ class Play extends Phaser.Scene {
                 let center = i * 720 / 7 + 720 / 14;
                 let height = Math.ceil(volume * 720 / 7);
                 background_ctx.fillRect(0, center - height / 2, 960, height);
-                this.loops[i].setVolume(Math.max(volume, VOLUME_EPSILON));
+                this.loops[i].setVolume(volume);
             }
         } else {
             background_ctx.fillRect(0, 0, 960, 720);
         }
 
         this.analyser.getByteTimeDomainData(this.analyser_buf);
-        console.log(this.analyser_buf);
         background_ctx.beginPath();
         let wave_height = background_canvas.height / 2;
         let sample_offset = (this.analyser.context.currentTime * this.sample_rate) % (this.sample_rate / 69.29566);
@@ -2160,7 +2156,7 @@ class Play extends Phaser.Scene {
         background_ctx.stroke();
 
         this.wikipedia_y = (this.wikipedia_y - delta * R2 * (0.01 + 0.19 * Math.pow(this.intensity, 4))) % (this.wikipedia.height + F(100));
-        this.wikipedia.y = this.wikipedia_y - F(5) + (95);
+        this.wikipedia.y = this.wikipedia_y - F(5) + F(95);
 
         this.three.r_zw += 1.13 * 0.00005 * delta * (1 + 4 * this.intensity);
         this.three.r_xy += 1.11 * 0.00005 * delta * (1 + 4 * this.intensity);
