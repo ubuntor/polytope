@@ -800,13 +800,13 @@ class Play extends Phaser.Scene {
                 this.text_particles[this.text_particle_index].tweens[0].remove();
                 this.text_particles[this.text_particle_index].tweens[1].remove();
             }
-            this.text_particles[this.text_particle_index].setAlpha(1).setScale(1).setText(new_word);
+            this.text_particles[this.text_particle_index].setAlpha(1).setScale(0.5).setText(new_word);
             if (this.finale) {
                 this.text_particles[this.text_particle_index].setPosition(W / 2 + Phaser.Math.FloatBetween(-300, 300), H / 2 + Phaser.Math.FloatBetween(-400, 400));
             }
             this.text_particles[this.text_particle_index].tweens = [this.tweens.add({
                 targets: this.text_particles[this.text_particle_index],
-                scale: 0.25,
+                scale: 1,
                 duration: 2000 / (1 + this.intensity - (this.finale ? 0.5 : 0)),
                 ease: 'Quad.easeOut',
             }),
