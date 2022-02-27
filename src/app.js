@@ -1252,7 +1252,6 @@ class Play extends Phaser.Scene {
         varying vec3 vNormal;
         
         uniform float uTime;
-        uniform float uNoiseDensity;
         uniform float uNoiseStrength;
         
         ${noise}
@@ -1289,8 +1288,6 @@ class Play extends Phaser.Scene {
             fragmentShader,
             uniforms: {
                 uTime: { value: 0 },
-                uSpeed: { value: 4 },
-                uNoiseDensity: { value: 1.5 },
                 uNoiseStrength: { value: 0.1 },
             },
             side: THREE.DoubleSide,
@@ -1458,7 +1455,7 @@ class Play extends Phaser.Scene {
         this.finale_rect_darken = this.add.rectangle(0, 0, W, H, 0x000000).setOrigin(0).setAlpha(0);
 
 
-        this.convergence = this.add.text(W / 2, H / 2, 'CONVERGENCE', { font: `${128 * FS}pt Thaleah`, fill: '#ff9cf3', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.495, 0.7).setAlpha(0);
+        this.convergence = this.add.text(W / 2, H / 2, 'CONVERGENCE', { font: `${F(128)}pt Thaleah`, fill: '#ff9cf3', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.495, 0.7).setAlpha(0);
         this.old_words = Array(4).fill('');
 
         this.ending_graphics = this.add.graphics();
@@ -1613,7 +1610,7 @@ class Play extends Phaser.Scene {
         }
 
         this.three.tet_material.uniforms.uNoiseStrength.value = 0.06 + 0.15 * this.intensity + (this.finale ? 0.15 : 0);
-        this.three.tet_material.uniforms.uTime.value += 0.001 * (0.4 + 2.6 * this.intensity + (this.finale ? 2 : 0)) * delta;
+        this.three.tet_material.uniforms.uTime.value += 0.001 * (0.4 + 2.6 * this.intensity + (this.finale ? 0.2 : 0)) * delta;
 
         if (!this.finale && !this.is_warning && this.intensity > 0.9) {
             this.is_warning = true;
