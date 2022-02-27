@@ -1086,17 +1086,11 @@ class Play extends Phaser.Scene {
                 this.process_move(i);
             }, this);
         }
-        // TODO: remove this
-        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M).on('down', function (key, event) {
+
+        // secret one-button mode :)
+        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P).on('down', function (key, event) {
             this.process_move(this.moves[0].move);
         }, this);
-        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L).on('down', function (key, event) {
-            this.intensity = 0.9;
-        }, this);
-        this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P).on('down', function (key, event) {
-            this.intensity = 1;
-        }, this);
-        // end remove this
 
         this.add.text(F(35), H - F(100), 'INTENSITY', { font: `${12 * FS}pt Covenant`, fill: '#f23af2' }).setOrigin(0, 1).setAngle(-90);
         this.add.rectangle(F(35), F(100), F(9), H - F(200), 0xf23af2).setOrigin(0);
