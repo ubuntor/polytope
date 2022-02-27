@@ -15,7 +15,7 @@ const R = devicePixelRatio;
 const W = 960 * R;
 const H = 720 * R;
 const R2 = R / 1.25;
-const FS = Math.round(R); // font scale
+const FS = Math.max(1, Math.floor(R)); // font scale
 const F = (x) => Math.floor(x * R2);
 const TRIALS = 50;
 const VOLUME_EPSILON = 0.001;
@@ -1457,10 +1457,10 @@ class Play extends Phaser.Scene {
 
         this.ending_draw = [false, false, false];
         this.ending_texts = [
-            this.add.text(F(400), F(300), 'Value', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(1, 0.5),
-            this.add.text(F(400), F(300 + 1 * 170), 'Score', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(1, 0.5),
-            this.add.text(F(400), F(300 + 2 * 170), 'Max Combo', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(1, 0.5),
-            this.add.text(W / 2, F(790), 'Z to play again', { font: `${36 * FS}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5)
+            this.add.text(F(400), F(300), 'Value', { font: `${F(36)}pt Covenant`, fill: '#ffffff' }).setOrigin(1, 0.5),
+            this.add.text(F(400), F(300 + 1 * 170), 'Score', { font: `${F(36)}pt Covenant`, fill: '#ffffff' }).setOrigin(1, 0.5),
+            this.add.text(F(400), F(300 + 2 * 170), 'Max Combo', { font: `${F(36)}pt Covenant`, fill: '#ffffff' }).setOrigin(1, 0.5),
+            this.add.text(W / 2, F(790), 'Z to play again', { font: `${F(36)}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5)
         ]
         this.ending_rotations = [Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2];
         this.sound.pauseOnBlur = false;
@@ -1636,7 +1636,10 @@ class Play extends Phaser.Scene {
             this.warning.setTint(0xff0000 + 0x000100 * Math.max(0, Math.min(255, Math.floor(255 * (0.95 - this.intensity) / 0.1))));
         }
 
+        background_ctx.fillStyle = "#111111";
         background_ctx.fillRect(0, 0, 960, 720);
+
+
         this.potential = Math.min(this.potential + 0.001 * delta * (1 + 100 * Math.pow(this.intensity, 2)), 1);
         if (!this.climax) {
             this.field_graphics.clear();
@@ -2119,11 +2122,17 @@ class Play extends Phaser.Scene {
         this.intensity_mask.height = (1 - this.intensity_smooth) * (H - F(200) - 2);
         this.potential_mask.height = (1 - this.potential) * (H - F(700) - 2);
 
+        background_ctx.fillStyle = "#300b30";
+
         if (!this.finale) {
             for (let i = 0; i < this.loops.length; i++) {
-                this.loops[i].setVolume((Math.max(VOLUME_EPSILON, Math.min(1,
+                let volume = (Math.max(0, Math.min(1,
                     (this.intensity_smooth - this.loop_thresholds[i]) / (this.loop_thresholds[i + 1] - this.loop_thresholds[i])
-                ))));
+                )));
+                let center = i * 720 / 7 + 720 / 14;
+                let height = Math.ceil(volume * 720 / 7);
+                background_ctx.fillRect(0, center - height / 2, 960, height);
+                this.loops[i].setVolume(Math.max(volume, VOLUME_EPSILON));
             }
         }
 
