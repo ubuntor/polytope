@@ -1187,8 +1187,7 @@ class Play extends Phaser.Scene {
         tet_geom.computeVertexNormals();
         console.log(tet_geom);
 
-        // heavily modified from https://codepen.io/marioecg/pen/abmXKvW
-        // and https://stegu.github.io/psrdnoise/3d-gallery/wobblysphere-threejs.html
+        // heavily modified from https://stegu.github.io/psrdnoise/3d-gallery/wobblysphere-threejs.html
         // also tweaking to get rid of the period param
         const noise = `
         // psrdnoise (c) Stefan Gustavson and Ian McEwan,
@@ -1247,17 +1246,17 @@ class Play extends Phaser.Scene {
         varying vec3 vNormal;
         
         uniform float uTime;
-        uniform float uNoiseStrength;
+        uniform float uAmplitude;
         
         ${noise}
         
         void main() {
             vec3 g;
-            float distortion = psrdnoise(1.5*position + uTime*vec3(0.1,0.123,0.134), uTime*10.0, g) * uNoiseStrength;
+            float d = psrdnoise(1.5*position + uTime*vec3(0.1,0.123,0.134), uTime*10.0, g) * uAmplitude;
             g *= 1.5; // scale gradient by inner derivative
-            vec3 pos = position + (normal * distortion);
+            vec3 pos = position + (normal * d);
             vec3 nor_perp = g - dot(g, normal)*normal;
-            vec3 nor = normalize(normal - uNoiseStrength * nor_perp); // displace normal by gradient
+            vec3 nor = normalize(normal - uAmplitude * nor_perp); // displace normal by gradient
             vNormal = normalMatrix * nor;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.);
         }`;
@@ -1265,25 +1264,24 @@ class Play extends Phaser.Scene {
         const fragmentShader = `
         varying vec3 vNormal;
         
-        uniform float uTime;
-        
         void main() {
             vec3 color = vec3(1.0);
             vec3 normal = vNormal;
             // ensure flipped normals look the same
-            /*if (normal.x + normal.y + normal.z < 0.0) {
+            if (normal.x + normal.y + normal.z < 0.0) {
                 normal = normal - 2.0*dot(normal, normalize(vec3(1.0,1.0,1.0)));
-            }*/
-            gl_FragColor = vec4(0.5+0.5*normalize(normal), 0.3);
+            }
+            vec3 lightDirection = normalize(vec3(1.0,1.0,2.0));
+            float specular = pow(max(0.0, -normalize(reflect(lightDirection, normal)).z), 256.0);
+            gl_FragColor = vec4(0.5+0.5*normalize(normal) + specular * vec3(1.0,1.0,1.0), 0.3 + specular * 0.3);
         }`;
 
-        //this.three.tet_material = new THREE.MeshNormalMaterial({ transparent: true, opacity: 0.5, side: THREE.DoubleSide });
         this.three.tet_material = new THREE.ShaderMaterial({
             vertexShader,
             fragmentShader,
             uniforms: {
                 uTime: { value: 0 },
-                uNoiseStrength: { value: 0.1 },
+                uAmplitude: { value: 0.1 },
             },
             side: THREE.DoubleSide,
             transparent: true
@@ -1463,7 +1461,7 @@ class Play extends Phaser.Scene {
             this.add.text(W / 2, F(790), 'Z to play again', { font: `${F(36)}pt Covenant`, fill: '#ffffff' }).setOrigin(0.5)
         ]
         this.ending_rotations = [Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2];
-        this.sound.pauseOnBlur = false;
+        //this.sound.pauseOnBlur = false;
         this.loop_thresholds = [
             0,
             Math.pow(1 / 7, 2),
@@ -1604,7 +1602,7 @@ class Play extends Phaser.Scene {
             return;
         }
 
-        this.three.tet_material.uniforms.uNoiseStrength.value = 0.06 + 0.15 * this.intensity + (this.finale ? 0.15 : 0);
+        this.three.tet_material.uniforms.uAmplitude.value = 0.06 + 0.15 * this.intensity + (this.finale ? 0.15 : 0);
         this.three.tet_material.uniforms.uTime.value += 0.001 * (0.4 + 2.6 * this.intensity + (this.finale ? 0.2 : 0)) * delta;
 
         if (!this.finale && !this.is_warning && this.intensity > 0.9) {
