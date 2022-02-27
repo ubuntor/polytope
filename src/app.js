@@ -792,12 +792,12 @@ class Play extends Phaser.Scene {
             this.flashes[x].setAlpha(1);
             let wordlist = words[this.moves[0].move];
 
-            let old_word = this.old_words[x];
+            let old_word = this.old_words[x == 4 ? 3 : x];
             let new_word = wordlist[Math.floor(Math.random() * wordlist.length)];
             while (old_word == new_word) {
                 new_word = wordlist[Math.floor(Math.random() * wordlist.length)];
             }
-            this.old_words[x] = new_word;
+            this.old_words[x == 4 ? 3 : x] = new_word;
             if (this.text_particles[this.text_particle_index].tweens) {
                 this.text_particles[this.text_particle_index].tweens[0].remove();
                 this.text_particles[this.text_particle_index].tweens[1].remove();
@@ -1222,17 +1222,12 @@ class Play extends Phaser.Scene {
         vec4 Ct = cos(theta), St = sin(theta);
         vec4 sz_prime = sqrt( 1.0 - sz*sz );
         vec4 gx, gy, gz;
-        if(alpha != 0.0) {
-            vec4 px = Ct * sz_prime, py = St * sz_prime, pz = sz;
-            vec4 Sp = sin(psi), Cp = cos(psi), Ctp = St*Sp - Ct*Cp;
-            vec4 qx = mix( Ctp*St, Sp, sz), qy = mix(-Ctp*Ct, Cp, sz);
-            vec4 qz = -(py*Cp + px*Sp);
-            vec4 Sa = vec4(sin(alpha)), Ca = vec4(cos(alpha));
-            gx = Ca*px + Sa*qx; gy = Ca*py + Sa*qy; gz = Ca*pz + Sa*qz;
-        }
-        else {
-            gx = Ct * sz_prime; gy = St * sz_prime; gz = sz;  
-        }
+        vec4 px = Ct * sz_prime, py = St * sz_prime, pz = sz;
+        vec4 Sp = sin(psi), Cp = cos(psi), Ctp = St*Sp - Ct*Cp;
+        vec4 qx = mix( Ctp*St, Sp, sz), qy = mix(-Ctp*Ct, Cp, sz);
+        vec4 qz = -(py*Cp + px*Sp);
+        vec4 Sa = vec4(sin(alpha)), Ca = vec4(cos(alpha));
+        gx = Ca*px + Sa*qx; gy = Ca*py + Sa*qy; gz = Ca*pz + Sa*qz;
         vec3 g0 = vec3(gx.x, gy.x, gz.x), g1 = vec3(gx.y, gy.y, gz.y);
         vec3 g2 = vec3(gx.z, gy.z, gz.z), g3 = vec3(gx.w, gy.w, gz.w);
         vec4 w = 0.5-vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3));
@@ -1456,7 +1451,7 @@ class Play extends Phaser.Scene {
 
 
         this.convergence = this.add.text(W / 2, H / 2, 'CONVERGENCE', { font: `${F(128)}pt Thaleah`, fill: '#ff9cf3', stroke: '#000000', strokeThickness: 2 }).setOrigin(0.495, 0.7).setAlpha(0);
-        this.old_words = Array(4).fill('');
+        this.old_words = Array(3).fill('');
 
         this.ending_graphics = this.add.graphics();
 
