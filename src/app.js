@@ -1273,7 +1273,7 @@ class Play extends Phaser.Scene {
             }
             vec3 lightDirection = normalize(vec3(1.0,1.0,2.0));
             float specular = pow(max(0.0, -normalize(reflect(lightDirection, normal)).z), 256.0);
-            gl_FragColor = vec4(0.5+0.5*normalize(normal) + specular * vec3(1.0,1.0,1.0), 0.3 + specular * 0.3);
+            gl_FragColor = vec4(0.5+0.5*normalize(normal) + specular * vec3(1.0,1.0,1.0), 0.4 + specular * 0.3);
         }`;
 
         this.three.tet_material = new THREE.ShaderMaterial({
@@ -1472,7 +1472,13 @@ class Play extends Phaser.Scene {
             Math.pow(6 / 7, 2),
             Math.pow(6.5 / 7, 2),
         ];
+        this.analyser = this.sound.context.createAnalyser();
+        this.analyser.fftSize = 2048;
+        this.analyser_buf_len = this.analyser.frequencyBinCount;
+        this.analyser_buf = new Uint8Array(this.analyser_buf_len);
+        this.sample_rate = this.sound.context.sampleRate;
         this.reinit();
+        this.sound.masterVolumeNode.connect(this.analyser);
         this.loading_text.destroy();
     }
 
@@ -1636,7 +1642,6 @@ class Play extends Phaser.Scene {
 
         background_ctx.fillStyle = "#111111";
         background_ctx.fillRect(0, 0, 960, 720);
-
 
         this.potential = Math.min(this.potential + 0.001 * delta * (1 + 100 * Math.pow(this.intensity, 2)), 1);
         if (!this.climax) {
@@ -2121,6 +2126,8 @@ class Play extends Phaser.Scene {
         this.potential_mask.height = (1 - this.potential) * (H - F(700) - 2);
 
         background_ctx.fillStyle = "#300b30";
+        background_ctx.lineWidth = 2;
+        background_ctx.strokeStyle = "#904090";
 
         if (!this.finale) {
             for (let i = 0; i < this.loops.length; i++) {
@@ -2132,7 +2139,25 @@ class Play extends Phaser.Scene {
                 background_ctx.fillRect(0, center - height / 2, 960, height);
                 this.loops[i].setVolume(Math.max(volume, VOLUME_EPSILON));
             }
+        } else {
+            background_ctx.fillRect(0, 0, 960, 720);
         }
+
+        this.analyser.getByteTimeDomainData(this.analyser_buf);
+        console.log(this.analyser_buf);
+        background_ctx.beginPath();
+        let wave_height = background_canvas.height / 2;
+        let sample_offset = (this.analyser.context.currentTime * this.sample_rate) % (this.sample_rate / 69.29566);
+        for (let i = 0; i < this.analyser_buf_len / 2; i++) {
+            let x = (i / (this.analyser_buf_len / 2 - 1)) * background_canvas.width;
+            let y = background_canvas.height / 2 + wave_height * (this.analyser_buf[i + this.analyser_buf_len / 2 - Math.floor(sample_offset)] - 128) / 128;
+            if (i == 0) {
+                background_ctx.moveTo(x, y);
+            } else {
+                background_ctx.lineTo(x, y);
+            }
+        }
+        background_ctx.stroke();
 
         this.wikipedia_y = (this.wikipedia_y - delta * R2 * (0.01 + 0.19 * Math.pow(this.intensity, 4))) % (this.wikipedia.height + F(100));
         this.wikipedia.y = this.wikipedia_y - F(5) + (95);
