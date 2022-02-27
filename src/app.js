@@ -44,7 +44,7 @@ DELTA = 1-1/n
 while true:
   sort xs: f(x1) >= ... >= f(x5)
   define fi = f(xi)
-  xc = (x1+...+x5)/5
+  xc = (x1+...+x4)/4
   xr = xc+ALPHA*(xc-x5)
   xe = xc+BETA*(xr-xc)
   xic = xc-GAMMA*(xr-xc)
@@ -410,17 +410,61 @@ class Title extends Phaser.Scene {
         for (let i = 0; i < 5; i++) {
             this.vertices_draw.push(this.add.circle(0, 0, F(20), VERTEX_COLORS[i]));
         }
-        this.theta = Math.random() * Math.PI * 2;
+        this.theta = 0; //Math.random() * Math.PI * 2;
         this.r1 = new THREE.Matrix4();
         this.r2 = new THREE.Matrix4();
         this.r3 = new THREE.Matrix4();
         this.r4 = new THREE.Matrix4();
-
-        this.add.text(W / 2, H / 2 - F(200), 'POLYTOPE', { font: `${F(176)}pt Thaleah`, fill: '#ff9cf3' }).setOrigin(0.5);
-        this.add.text(W / 2, H / 2 + F(200), 'CLICK TO BEGIN', { font: `${F(48)}pt Covenant`, fill: '#FFFFFF' }).setOrigin(0.5);
+        console.log(this.vertices_draw);
+        this.add.text(W / 2, H / 2 - F(200), 'POLYTOPE', { font: `${F(176)}pt Thaleah`, fill: '#ff9cf3' }).setOrigin(0.5).setDepth(2);
+        this.add.text(W / 2, H / 2 + F(200), 'CLICK TO BEGIN', { font: `${F(48)}pt Covenant`, fill: '#FFFFFF' }).setOrigin(0.5).setDepth(2);
+        this.zstate = 0;
     }
     update(time, delta) {
         background_ctx.fillRect(0, 0, 960, 720);
+        // vertex ordering bothered me enough to do this...
+        if (this.zstate == 0 && this.theta > 1.4) {
+            this.vertices_draw[2].setDepth(1);
+            this.zstate++;
+        } else if (this.zstate == 1 && this.theta > 1.6) {
+            this.vertices_draw[2].setDepth(0);
+            this.zstate++;
+        } else if (this.zstate == 2 && this.theta > 3.0) {
+            this.vertices_draw[2].setDepth(1);
+            this.vertices_draw[1].setDepth(0.5);
+            this.zstate++;
+        } else if (this.zstate == 3 && this.theta > 3.2) {
+            this.vertices_draw[2].setDepth(0);
+            this.vertices_draw[1].setDepth(0);
+            this.zstate++;
+        } else if (this.zstate == 4 && this.theta > 3.7) {
+            this.vertices_draw[3].setDepth(1);
+            this.zstate++;
+        } else if (this.zstate == 5 && this.theta > 3.9) {
+            this.vertices_draw[3].setDepth(0);
+            this.zstate++;
+        } else if (this.zstate == 6 && this.theta > 4.6) {
+            this.vertices_draw[3].setDepth(1);
+            this.zstate++;
+        } else if (this.zstate == 7 && this.theta > 4.8) {
+            this.vertices_draw[3].setDepth(0);
+            this.zstate++;
+        } else if (this.zstate == 8 && this.theta > 5.5) {
+            this.vertices_draw[1].setDepth(1);
+            this.zstate++;
+        } else if (this.zstate == 9 && this.theta > 5.8) {
+            this.vertices_draw[1].setDepth(0);
+            this.zstate++;
+        } else if (this.zstate == 10 && this.theta > 6.1) {
+            this.vertices_draw[1].setDepth(1);
+            this.vertices_draw[0].setDepth(0.5);
+            this.zstate++;
+        } else if (this.zstate == 11 && this.theta > 0.1 && this.theta < 0.15) {
+            this.vertices_draw[1].setDepth(0);
+            this.vertices_draw[0].setDepth(0);
+            this.zstate = 0;
+        }
+
         this.background_graphics.clear();
         this.background_graphics.lineStyle(3, 0x3f3f3f);
         this.background_graphics.fillStyle(0x3f3f3f);
@@ -429,10 +473,10 @@ class Title extends Phaser.Scene {
             let r = 150 + i * 50;
             let x = W / 2;
             let y = H / 2;
-            let digits = balanced_ternary(this.background_rotations[i] / 200, 7);
+            let digits = balanced_ternary(this.background_rotations[i] / 500, 7);
             let width = 1.2 * (50 / r);
             let size = 20;
-            this.background_rotations[i] += delta * 0.0002 * (9 - i);
+            this.background_rotations[i] += delta * 0.00025 * (9 - i);
             let start = this.background_rotations[i] - (digits.length * width) / 2;
             this.background_graphics.beginPath();
             this.background_graphics.arc(x, y, F(r), start, start + digits.length * width);
@@ -727,7 +771,7 @@ class Play extends Phaser.Scene {
             targets: this.combo_break_text,
             scaleX: 1.5,
             scaleY: 0,
-            delay: 1000,
+            delay: 500,
             duration: 100,
             ease: 'Quad.easeOut'
         })];
@@ -877,14 +921,8 @@ class Play extends Phaser.Scene {
                         duration: 5000,
                         ease: 'Quint.easeIn'
                     });
-                    let finale_music = this.sound.add('finale', { volume: 0 });
+                    let finale_music = this.sound.add('finale');
                     finale_music.play();
-                    this.tweens.add({
-                        targets: finale_music,
-                        volume: 1,
-                        duration: 5000,
-                        ease: 'Linear'
-                    });
                     this.tweens.add({
                         targets: this.loops,
                         volume: VOLUME_EPSILON,
@@ -1620,8 +1658,8 @@ class Play extends Phaser.Scene {
             return;
         }
 
-        this.three.tet_material.uniforms.uNoiseStrength.value = 0.05 + 0.10 * this.intensity + (this.finale ? 0.15 : 0);
-        this.three.tet_material.uniforms.uTime.value += 0.001 * (0.2 + 2.8 * this.intensity + (this.finale ? 2 : 0)) * delta;
+        this.three.tet_material.uniforms.uNoiseStrength.value = 0.06 + 0.15 * this.intensity + (this.finale ? 0.15 : 0);
+        this.three.tet_material.uniforms.uTime.value += 0.001 * (0.4 + 2.6 * this.intensity + (this.finale ? 2 : 0)) * delta;
 
         if (!this.finale && !this.is_warning && this.intensity > 0.9) {
             this.is_warning = true;
